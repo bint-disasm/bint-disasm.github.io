@@ -1122,12 +1122,14 @@ export class BintApp extends HTMLElement {
                 filename = filename + '_modified';
             }
 
-            // Decode base64 to binary
-            const binaryString = atob(fileData.data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
+            // `fileData.data` arrives as a Uint8Array (typed return)
+            // or as a number-Array fallback from serde-wasm-bindgen
+            // depending on the serializer config — handle either.
+            // Earlier this path round-tripped through base64 (`atob`),
+            // but the wasm side hands us raw bytes now so the
+            // intermediate decode was wrong.
+            const raw = fileData.data;
+            const bytes = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
 
             // Create blob and download
             const blob = new Blob([bytes], { type: 'application/octet-stream' });

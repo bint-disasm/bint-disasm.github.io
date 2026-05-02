@@ -1,0 +1,27 @@
+{
+  "name": "bint",
+  "type": "module",
+  "description": "An interactive disassembler, hex editor, and binary analysis tool",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bint-disasm/bint"
+  },
+  "files": [
+    "bint_bg.wasm",
+    "bint.js",
+    "bint.d.ts"
+  ],
+  "main": "bint.js",
+  "types": "bint.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ],
+  "keywords": [
+    "disassembler",
+    "binary-analysis",
+    "reverse-engineering",
+    "hex-editor"
+  ]
+}
