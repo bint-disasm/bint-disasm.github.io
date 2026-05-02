@@ -10,6 +10,7 @@
 import { events, Events } from '../core/events.js';
 import { getWasmAPI } from '../core/wasm-api.js';
 import { formatAddress, formatFileSize } from '../utils/format.js';
+import { icon } from '../utils/icons.js';
 
 // Import all components
 import './bint-panel.js';
@@ -407,6 +408,32 @@ template.innerHTML = `
         .view-tabs.inline-tabs button {
             padding: 2px var(--space-sm);
         }
+
+        /* Lock button in panel headers — small square that holds a
+         * lucide padlock SVG (rendered with stroke=currentColor, so
+         * a CSS color: rule styles the icon). The .locked variant
+         * tints both the icon and the border so the state is
+         * obvious at a glance. */
+        .btn-lock {
+            margin-left: var(--space-sm);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 2px 4px;
+            cursor: pointer;
+            border-radius: 3px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-lock:hover {
+            color: var(--text-primary);
+            border-color: var(--accent-primary);
+        }
+        .btn-lock.locked {
+            color: var(--accent-warning);
+            border-color: var(--accent-warning);
+        }
         .view-body {
             flex: 1;
             min-height: 0;
@@ -750,7 +777,7 @@ template.innerHTML = `
          * Description spans the full row underneath. */
         .option-row {
             display: grid;
-            grid-template-columns: 1fr 200px;
+            grid-template-columns: 1fr 110px;
             grid-template-rows: auto auto;
             column-gap: var(--space-md);
             row-gap: 2px;
@@ -866,6 +893,8 @@ template.innerHTML = `
                     <button type="button" data-disasm-mode="linear" class="active">Linear</button>
                     <button type="button" data-disasm-mode="graph">Graph</button>
                 </div>
+                <button type="button" class="btn-lock" slot="header"
+                        id="disasm-lock" title="Lock to current address"></button>
                 <bint-disassembly></bint-disassembly>
             </bint-panel>
         </div>
@@ -876,6 +905,8 @@ template.innerHTML = `
                     <button type="button" data-view="hex" class="active">Hex</button>
                     <button type="button" data-view="decompile">Decompile</button>
                 </div>
+                <button type="button" class="btn-lock" slot="header"
+                        id="view-lock" title="Lock to current address"></button>
                 <div class="view-container">
                     <div class="view-body">
                         <div class="view-slot" data-view="hex">
@@ -1070,6 +1101,28 @@ export class BintApp extends HTMLElement {
             if (!btn) return;
             this._selectDisasmMode(btn.dataset.disasmMode);
         });
+
+        // Per-panel lock toggles. Disassembly has its own lock;
+        // the View panel's lock applies to both Hex and Decompile,
+        // since they share the panel and the user thinks of them
+        // as one slot in the layout.
+        this._disasmLockBtn = this.shadowRoot.getElementById('disasm-lock');
+        this._disasmLockBtn?.addEventListener('click', () => {
+            const next = !this._disassembly?.isLocked?.();
+            this._disassembly?.setLocked?.(next);
+            this._updateLockBtn(this._disasmLockBtn, next);
+        });
+        this._viewLockBtn = this.shadowRoot.getElementById('view-lock');
+        this._viewLockBtn?.addEventListener('click', () => {
+            const next = !(this._hexView?.isLocked?.() || this._decompileView?.isLocked?.());
+            this._hexView?.setLocked?.(next);
+            this._decompileView?.setLocked?.(next);
+            this._updateLockBtn(this._viewLockBtn, next);
+        });
+        // Paint the initial unlocked icons. Without this the buttons
+        // sit empty until the first toggle / binary load.
+        this._updateLockBtn(this._disasmLockBtn, false);
+        this._updateLockBtn(this._viewLockBtn, false);
 
         // Layout elements
         this._main = this.shadowRoot.querySelector('.main');
@@ -1385,6 +1438,17 @@ export class BintApp extends HTMLElement {
         }
     }
 
+    /** Sync a panel-header lock button's visual state with the
+     *  underlying boolean. Toggles `.locked` for the warning-tinted
+     *  border and swaps the lucide padlock glyph between open and
+     *  closed. */
+    _updateLockBtn(btn, locked) {
+        if (!btn) return;
+        btn.classList.toggle('locked', !!locked);
+        btn.innerHTML = icon(locked ? 'lock' : 'unlock');
+        btn.title = locked ? 'Unlock — follow current address' : 'Lock to current address';
+    }
+
     /**
      * Switch the right-panel tab between 'hex' and 'decompile'.
      * Notifies the decompile view via setActive() so it can kick off
@@ -1590,6 +1654,16 @@ export class BintApp extends HTMLElement {
     }
 
     _onBinaryLoaded(metadata) {
+        // A new binary invalidates any locked address from the
+        // previous one. The components reset their own _locked flags
+        // (hex does this explicitly; disasm + decompile would otherwise
+        // hold stale snapshots). Sync the header buttons too.
+        this._disassembly?.setLocked?.(false);
+        this._hexView?.setLocked?.(false);
+        this._decompileView?.setLocked?.(false);
+        this._updateLockBtn(this._disasmLockBtn, false);
+        this._updateLockBtn(this._viewLockBtn, false);
+
         // Show file path (use stored filename from File object, fallback to metadata)
         const filename = this._loadedFilename || metadata.filename || metadata.path || 'unknown';
         this._filePath.textContent = filename;

@@ -149,7 +149,28 @@ class DecompileView extends HTMLElement {
         // boundaries aren't known to this view yet. For now we re-run
         // any time the seek changes to a different address.
         this._lastAddr = null;
+        // While locked, SEEK_CHANGED stops moving _currentSeek so
+        // the displayed function stays put even as the rest of the
+        // UI navigates. Toggled from the parent via setLocked().
+        this._locked = false;
     }
+
+    /** Pin / unpin the panel to its current seek. While locked we
+     *  ignore SEEK_CHANGED so the user can keep one function on
+     *  screen while clicking around in disassembly or names. On
+     *  unlock we re-sync to the live seek and re-run the
+     *  decompiler. */
+    setLocked(locked) {
+        const next = !!locked;
+        if (next === this._locked) return;
+        this._locked = next;
+        if (!this._locked) {
+            this._syncSeekFromApi().then(() => {
+                if (this._active) this._scheduleDecompile();
+            });
+        }
+    }
+    isLocked() { return this._locked; }
 
     connectedCallback() {
         this._api = getWasmAPI();
@@ -192,6 +213,7 @@ class DecompileView extends HTMLElement {
     }
 
     _onSeek(addr) {
+        if (this._locked) return;
         // SEEK_CHANGED payloads come as hex strings like "0x4005c5" from
         // api.setSeek(), but also sometimes as raw numbers/bigints from
         // other code paths. Normalize to BigInt — addresses can be

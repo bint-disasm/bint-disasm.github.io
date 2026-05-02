@@ -34,6 +34,7 @@ export const websession_name_here: (a: number, b: bigint) => [number, number, nu
 export const websession_name_list: (a: number, b: number, c: number) => [number, number, number];
 export const websession_name_rename: (a: number, b: bigint, c: number, d: number) => [number, number, number];
 export const websession_new: () => number;
+export const websession_options_get: (a: number, b: number, c: number) => [number, number, number];
 export const websession_options_list: (a: number) => [number, number, number];
 export const websession_options_set: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
 export const websession_read_at: (a: number, b: bigint, c: number) => [number, number];

@@ -200,13 +200,26 @@ export class BintHexView extends HTMLElement {
         // toggled by the Emulation panel's "Solve hex" checkbox.
         // Only meaningful when `_stateIndex` is set.
         this._solveSymbolic = false;
+        // When `_locked` is true the panel ignores SEEK_CHANGED and
+        // refresh() reads from `_lockedAddr` instead of the live
+        // session seek, so the user can keep one address on screen
+        // while clicking around elsewhere. Toggled from the parent
+        // via setLocked().
+        this._locked = false;
+        this._lockedAddr = null;
 
         events.on(Events.BINARY_LOADED, () => {
             this._stateIndex = null;
             this._solveSymbolic = false;
+            // A new binary invalidates any pinned address.
+            this._locked = false;
+            this._lockedAddr = null;
             this.refresh();
         });
-        events.on(Events.SEEK_CHANGED, () => this.refresh());
+        events.on(Events.SEEK_CHANGED, () => {
+            if (this._locked) return;
+            this.refresh();
+        });
         events.on(Events.MEMORY_VIEW_TARGET_CHANGED, ({ stateIndex }) => {
             this._stateIndex = (typeof stateIndex === 'number') ? stateIndex : null;
             this.refresh();
@@ -239,6 +252,27 @@ export class BintHexView extends HTMLElement {
         this._applyHexCols();
     }
 
+    /** Pin the panel to its current address (or release the pin).
+     *  Locking snapshots the live seek into _lockedAddr so subsequent
+     *  refreshes (memory edits, hex.cols changes, etc.) keep showing
+     *  the pinned location. Unlocking re-syncs to the live seek. */
+    async setLocked(locked) {
+        const next = !!locked;
+        if (next === this._locked) return;
+        if (next) {
+            try {
+                this._lockedAddr = this._api ? await this._api.getSeek() : null;
+            } catch {
+                this._lockedAddr = null;
+            }
+        } else {
+            this._lockedAddr = null;
+        }
+        this._locked = next;
+        if (!this._locked) this.refresh();
+    }
+    isLocked() { return this._locked; }
+
     /** Push the viewport-appropriate hex.cols value into the wasm
      *  session's options. Safe to call before or after the API is
      *  connected; without an API it's a no-op. */
@@ -270,7 +304,12 @@ export class BintHexView extends HTMLElement {
             // hex_dump returns HexOutput { start_address, lines:
             // [{address: BigInt, hex, ascii}] }. 512 bytes is enough
             // for a panelful at the default 16 cols-per-row.
-            const seek = await this._api.getSeek();
+            // When the panel is locked, read from the snapshotted
+            // address instead of the live session seek so MEMORY_MODIFIED
+            // (or any other refresh trigger) doesn't snap us back.
+            const seek = this._locked && this._lockedAddr != null
+                ? this._lockedAddr
+                : await this._api.getSeek();
             const seekBig = typeof seek === 'bigint' ? seek : BigInt(seek);
             // hex_dump dispatches through Session::memory_view —
             // null target means session memory; a number redirects

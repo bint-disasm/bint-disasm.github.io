@@ -324,6 +324,12 @@ export class BintDisassembly extends HTMLElement {
         this._api = null;
         this._currentAddress = 0;
         this._mode = 'linear';
+        // When `_locked` is true, SEEK_CHANGED stops updating the
+        // displayed address and refresh() leaves _currentAddress
+        // alone. The user has explicitly opted to pin this panel,
+        // so we trust the snapshot rather than chasing the live
+        // seek. Toggled from the parent via setLocked().
+        this._locked = false;
 
         // Symex breakpoints. Three `Set<string>`s of canonical
         // 0x-prefixed lowercase hex addresses; the per-row click
@@ -358,6 +364,7 @@ export class BintDisassembly extends HTMLElement {
             this.refresh();
         });
         events.on(Events.SEEK_CHANGED, (addr) => {
+            if (this._locked) return;
             this._currentAddress = addr;
             this.refresh();
         });
@@ -429,6 +436,19 @@ export class BintDisassembly extends HTMLElement {
         return this._mode;
     }
 
+    /** Pin or unpin the displayed address. While locked, the
+     *  panel ignores SEEK_CHANGED so the user can keep one place
+     *  on screen while navigating around in the other panels. On
+     *  unlock we re-sync to the live seek so the panel "catches up"
+     *  to wherever the rest of the UI is now. */
+    setLocked(locked) {
+        const next = !!locked;
+        if (next === this._locked) return;
+        this._locked = next;
+        if (!this._locked) this.refresh();
+    }
+    isLocked() { return this._locked; }
+
     /**
      * Set the API instance.
      * @param {BintAPI} api
@@ -455,7 +475,13 @@ export class BintDisassembly extends HTMLElement {
         this._showLoading();
 
         try {
-            this._currentAddress = await this._api.getSeek();
+            // Locked panels keep whatever _currentAddress the lock
+            // captured. Without this guard a refresh fired by
+            // MEMORY_MODIFIED (or any non-seek trigger) would snap
+            // back to the live seek and silently break the lock.
+            if (!this._locked) {
+                this._currentAddress = await this._api.getSeek();
+            }
             if (this._mode === 'graph') {
                 await this._refreshGraph();
             } else {

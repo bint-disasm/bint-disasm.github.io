@@ -161,6 +161,22 @@ export class BintNamesList extends HTMLElement {
         this._api = api;
     }
 
+    /** Read the `ui.names_max` option from the wasm session.
+     *  Returns 4096 as a defensive default if the option isn't
+     *  available yet (no API, pre-init, etc.) so a missing option
+     *  never accidentally renders a 100k-row symbol table. 0 = no cap. */
+    _readMaxNames() {
+        try {
+            const out = this._api?.session?.options_get?.('ui.names_max');
+            const v = out?.value;
+            if (v == null) return 4096;
+            const n = parseInt(v, 10);
+            return Number.isFinite(n) && n >= 0 ? n : 4096;
+        } catch {
+            return 4096;
+        }
+    }
+
     async refresh() {
         console.log('[names-list] refresh() called');
 
@@ -245,7 +261,9 @@ export class BintNamesList extends HTMLElement {
             return;
         }
 
-        // Count by type
+        // Count by type — uses the *full* filtered list so the
+        // header reflects what filter actually matched, not just
+        // what fit on screen.
         const counts = {};
         for (const n of this._filteredNames) {
             const info = TYPE_INFO[n.type];
@@ -253,15 +271,32 @@ export class BintNamesList extends HTMLElement {
             counts[label] = (counts[label] || 0) + 1;
         }
 
-        // Build count string
+        // Cap rendered rows at `ui.names_max` (0 = unlimited). The
+        // filter already ran across every loaded name; we slice
+        // here so the DOM stays cheap on huge symbol tables, but
+        // searches still surface matches from the deep tail —
+        // they bubble up to the top of the slice when the filter
+        // narrows the candidate set.
+        const max = this._readMaxNames();
+        const capped = max > 0 && this._filteredNames.length > max;
+        const slice = capped
+            ? this._filteredNames.slice(0, max)
+            : this._filteredNames;
+
+        // Build count string. When the slice is shorter than the
+        // matched set, prefix with the truncation indicator so
+        // the user knows there's more to see if they keep typing.
         const parts = Object.entries(counts)
-            .sort((a, b) => b[1] - a[1]) // Sort by count descending
+            .sort((a, b) => b[1] - a[1])
             .map(([label, count]) => `${count} ${label}`);
-        this._count.textContent = parts.join(', ');
+        const summary = parts.join(', ');
+        this._count.textContent = capped
+            ? `showing ${slice.length} of ${this._filteredNames.length} — ${summary}`
+            : summary;
 
         this._list.innerHTML = '';
 
-        for (const name of this._filteredNames) {
+        for (const name of slice) {
             const div = document.createElement('div');
             div.className = 'name-row';
 

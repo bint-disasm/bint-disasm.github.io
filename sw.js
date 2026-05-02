@@ -1,6 +1,6 @@
 // Service Worker for bin't PWA
 // Bump CACHE_NAME whenever STATIC_ASSETS changes so clients pull fresh.
-const CACHE_NAME = 'bint-v9';
+const CACHE_NAME = 'bint-v13';
 
 // Files to pre-cache at install time. Spec files for the Ghidra
 // decompiler are NOT listed here — they're fetched lazily and cached on
@@ -22,6 +22,7 @@ const STATIC_ASSETS = [
     '/js/core/events.js',
     '/js/core/wasm-api.js',
     '/js/utils/format.js',
+    '/js/utils/icons.js',
     '/js/utils/storage.js',
     '/js/components/bint-app.js',
     '/js/components/bint-console.js',

@@ -293,6 +293,23 @@ export class WebSession {
         return takeFromExternrefTable0(ret[0]);
     }
     /**
+     * Reads a single option's current value as a string. Returns
+     * `OptionGetOutput { name, value: Option<String> }` — `value`
+     * is `null` when the option doesn't exist. Cheaper than
+     * `options_list` for hot paths that need a single value.
+     * @param {string} name
+     * @returns {any}
+     */
+    options_get(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.websession_options_get(this.__wbg_ptr, ptr0, len0);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
      * Sets `name` to `value`. Same parsing as `e <name>=<value>` —
      * bools accept `true|false|on|off|yes|no|1|0`, ints accept
      * decimal or `0x` hex.

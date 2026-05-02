@@ -63,6 +63,13 @@ export class WebSession {
    */
   name_rename(id: bigint, new_name: string): any;
   /**
+   * Reads a single option's current value as a string. Returns
+   * `OptionGetOutput { name, value: Option<String> }` — `value`
+   * is `null` when the option doesn't exist. Cheaper than
+   * `options_list` for hot paths that need a single value.
+   */
+  options_get(name: string): any;
+  /**
    * Sets `name` to `value`. Same parsing as `e <name>=<value>` —
    * bools accept `true|false|on|off|yes|no|1|0`, ints accept
    * decimal or `0x` hex.
@@ -329,6 +336,7 @@ export interface InitOutput {
   readonly websession_name_list: (a: number, b: number, c: number) => [number, number, number];
   readonly websession_name_rename: (a: number, b: bigint, c: number, d: number) => [number, number, number];
   readonly websession_new: () => number;
+  readonly websession_options_get: (a: number, b: number, c: number) => [number, number, number];
   readonly websession_options_list: (a: number) => [number, number, number];
   readonly websession_options_set: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
   readonly websession_read_at: (a: number, b: bigint, c: number) => [number, number];
