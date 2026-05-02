@@ -534,7 +534,7 @@ template.innerHTML = `
             background: none;
             border: none;
             color: var(--text-secondary);
-            padding: 10px 4px;
+            padding: 6px 4px;
             font-family: inherit;
             font-size: var(--font-size-xs);
             cursor: pointer;

@@ -177,7 +177,19 @@ export class BintHexView extends HTMLElement {
 
         this._container = this.shadowRoot.querySelector('.container');
         this._api = null;
-        this._bytesPerLine = 16;
+        // 16 bytes per row on desktop, 8 on phone-sized screens. The
+        // Rust side decides hex layout from the `hex.cols` option, so
+        // we just push the right value into that option once the wasm
+        // session is wired up (see setAPI below). Re-applies on
+        // breakpoint cross-over for things like the Z Fold unfolding
+        // mid-session.
+        this._mobileMQ = window.matchMedia(
+            '(max-width: 768px), (pointer: coarse) and (max-width: 1024px)'
+        );
+        this._mobileMQ.addEventListener('change', () => {
+            this._applyHexCols();
+            this.refresh();
+        });
         this._editing = false;
         // null = read from session memory layer (default).
         // number = read from emulation state at that index.
@@ -224,6 +236,19 @@ export class BintHexView extends HTMLElement {
 
     setAPI(api) {
         this._api = api;
+        this._applyHexCols();
+    }
+
+    /** Push the viewport-appropriate hex.cols value into the wasm
+     *  session's options. Safe to call before or after the API is
+     *  connected; without an API it's a no-op. */
+    _applyHexCols() {
+        if (!this._api?.session?.options_set) return;
+        try {
+            this._api.session.options_set('hex.cols', this._mobileMQ.matches ? '8' : '16');
+        } catch (e) {
+            console.warn('[hex] failed to set hex.cols', e);
+        }
     }
 
     async refresh() {
