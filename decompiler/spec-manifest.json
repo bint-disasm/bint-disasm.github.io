@@ -373,6 +373,30 @@
       "size": 140827
     },
     {
+      "path": "sparc/data/languages/SparcV9.ldefs",
+      "size": 1458
+    },
+    {
+      "path": "sparc/data/languages/SparcV9.pspec",
+      "size": 629
+    },
+    {
+      "path": "sparc/data/languages/SparcV9_32.cspec",
+      "size": 4017
+    },
+    {
+      "path": "sparc/data/languages/SparcV9_32.sla",
+      "size": 40322
+    },
+    {
+      "path": "sparc/data/languages/SparcV9_64.cspec",
+      "size": 8189
+    },
+    {
+      "path": "sparc/data/languages/SparcV9_64.sla",
+      "size": 40122
+    },
+    {
       "path": "x86/data/languages/x86-16-real.pspec",
       "size": 944
     },

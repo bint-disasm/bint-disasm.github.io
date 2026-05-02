@@ -21,8 +21,20 @@ if [[ ! -d "$SRC_PROCS" ]]; then
     exit 1
 fi
 
-# Architectures we ship. Ordered so the manifest output is stable.
-ARCHS=(x86 ARM AARCH64 MIPS PowerPC)
+# Architectures we ship. Each entry is `<ghidra-dir>:<manifest-dir>` —
+# the destination name is what the staged tree uses, and must match
+# the first segment of the SLEIGH language id (which is what the web
+# frontend uses to pick which subset of the manifest to mount).
+# Ghidra's directory casing doesn't always match the SLEIGH id (e.g.
+# `Sparc` vs. `sparc`), so the two columns are distinct.
+ARCHS=(
+    x86:x86
+    ARM:ARM
+    AARCH64:AARCH64
+    MIPS:MIPS
+    PowerPC:PowerPC
+    Sparc:sparc
+)
 
 echo "[stage] wiping $OUT_DIR"
 rm -rf "$OUT_DIR"
@@ -33,13 +45,15 @@ mkdir -p "$OUT_DIR"
 # decompiler we ship, so we leave them out.
 exts=(sla pspec cspec ldefs)
 
-for arch in "${ARCHS[@]}"; do
-    src="$SRC_PROCS/$arch/data/languages"
+for entry in "${ARCHS[@]}"; do
+    src_dir="${entry%%:*}"
+    dst_dir="${entry##*:}"
+    src="$SRC_PROCS/$src_dir/data/languages"
     if [[ ! -d "$src" ]]; then
-        echo "[stage] skipping $arch (not found)" >&2
+        echo "[stage] skipping $src_dir (not found)" >&2
         continue
     fi
-    dst="$OUT_DIR/$arch/data/languages"
+    dst="$OUT_DIR/$dst_dir/data/languages"
     mkdir -p "$dst"
     for ext in "${exts[@]}"; do
         for f in "$src"/*.$ext; do
