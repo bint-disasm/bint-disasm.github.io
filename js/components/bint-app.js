@@ -186,26 +186,57 @@ template.innerHTML = `
             min-width: 28px;
         }
 
-        /* Main content area - 3 column layout */
+        /* Main content area - 5-column / 3-row grid with explicit
+         * splitter tracks at each panel boundary. Splitters get a
+         * 6px visible/hit track — wide enough to grab without a
+         * separate invisible hit-area pseudo (which previously
+         * overlapped the strings panel's sticky section header
+         * and made it look like the divider was sitting on top of
+         * panel content). */
         .main {
+            --splitter-w: 6px;
             flex: 1;
             display: grid;
-            grid-template-columns: 420px minmax(0, 1fr) minmax(0, 1fr);
-            grid-template-rows: minmax(0, 1fr) 300px;
-            gap: 1px;
-            background: var(--border-subtle);
+            grid-template-columns:
+                420px var(--splitter-w) minmax(0, 1fr) var(--splitter-w) minmax(0, 1fr);
+            grid-template-rows:
+                minmax(0, 1fr) var(--splitter-w) 300px;
+            background: var(--bg-primary);
             overflow: hidden;
             min-height: 0;
         }
 
-        /* When hex panel is collapsed, center takes full width */
+        /* When hex panel is collapsed: drop the splitter and right
+         * column from the grid template; the rest still resolves. */
         .main.hex-collapsed {
-            grid-template-columns: 420px minmax(0, 1fr);
+            grid-template-columns:
+                420px var(--splitter-w) minmax(0, 1fr);
         }
 
-        .main.hex-collapsed .right {
+        .main.hex-collapsed .right,
+        .main.hex-collapsed .splitter-right {
             display: none;
         }
+
+        .splitter {
+            background: var(--border-subtle);
+            user-select: none;
+        }
+        .splitter:hover,
+        .splitter.dragging {
+            background: var(--accent-primary);
+        }
+        .splitter.col {
+            cursor: col-resize;
+            grid-row: 1 / -1;
+        }
+        .splitter.row {
+            cursor: row-resize;
+        }
+        /* Splitter placement in the grid. */
+        .splitter-sidebar { grid-column: 2; }
+        .splitter-right   { grid-column: 4; grid-row: 1; }
+        .splitter-bottom  { grid-column: 3 / -1; grid-row: 2; }
 
         /* Collapsed hex panel tab on the right edge */
         .hex-collapsed-tab {
@@ -243,6 +274,7 @@ template.innerHTML = `
         }
 
         .sidebar {
+            grid-column: 1;
             grid-row: 1 / -1;
             background: var(--bg-primary);
             overflow: hidden;
@@ -263,6 +295,8 @@ template.innerHTML = `
         }
 
         .center {
+            grid-column: 3;
+            grid-row: 1;
             background: var(--bg-primary);
             overflow: hidden;
             display: flex;
@@ -276,6 +310,8 @@ template.innerHTML = `
         }
 
         .right {
+            grid-column: 5;
+            grid-row: 1;
             background: var(--bg-primary);
             overflow: hidden;
             display: flex;
@@ -354,7 +390,8 @@ template.innerHTML = `
         .view-slot[hidden] { display: none; }
 
         .bottom {
-            grid-column: 2 / -1;
+            grid-column: 3 / -1;
+            grid-row: 3;
             background: var(--bg-primary);
             overflow: hidden;
             display: flex;
@@ -678,6 +715,7 @@ template.innerHTML = `
                 <bint-xrefs></bint-xrefs>
             </bint-panel>
         </div>
+        <div class="splitter col splitter-sidebar" data-resize="sidebar"></div>
         <div class="center">
             <bint-panel panel-title="Disassembly" icon="<>" collapsible="false" closable="false">
                 <div class="view-tabs inline-tabs" slot="header" id="disasm-tabs">
@@ -687,6 +725,7 @@ template.innerHTML = `
                 <bint-disassembly></bint-disassembly>
             </bint-panel>
         </div>
+        <div class="splitter col splitter-right" data-resize="right"></div>
         <div class="right">
             <bint-panel panel-title="View" icon="#" collapsible="true" closable="false" id="hex-panel">
                 <div class="view-tabs inline-tabs" slot="header" id="view-tabs">
@@ -705,6 +744,7 @@ template.innerHTML = `
                 </div>
             </bint-panel>
         </div>
+        <div class="splitter row splitter-bottom" data-resize="bottom"></div>
         <div class="bottom">
             <bint-panel panel-title="Console" icon=">" collapsible="true" closable="false">
                 <bint-console></bint-console>
@@ -873,6 +913,11 @@ export class BintApp extends HTMLElement {
         this._hexPanel = this.shadowRoot.querySelector('#hex-panel');
         this._hexCollapsedTab = this.shadowRoot.querySelector('.hex-collapsed-tab');
 
+        // Wire panel-resize splitters (sidebar/center boundary,
+        // center/right boundary, top-row/bottom boundary). Must run
+        // after `this._main` is grabbed.
+        this._wireSplitters();
+
         // Modal elements
         this._modalSeek = this.shadowRoot.querySelector('#modal-seek');
         this._modalSeekInput = this._modalSeek.querySelector('.modal-input');
@@ -971,6 +1016,10 @@ export class BintApp extends HTMLElement {
             // Hide loading overlay
             this._loadingOverlay.style.display = 'none';
 
+            // Showcase: if the page was opened with `?example=NAME[#addr]`,
+            // fetch web/examples/NAME, load it, and seek to the hash addr.
+            await this._maybeLoadExample();
+
         } catch (e) {
             console.error('Failed to initialize WASM:', e);
             this._loadingOverlay.querySelector('.loading-content').innerHTML = `
@@ -991,6 +1040,134 @@ export class BintApp extends HTMLElement {
             }
         };
         input.click();
+    }
+
+    /**
+     * Wire the three panel splitters in the `.main` grid. Each
+     * splitter listens for `mousedown`, captures the current track
+     * sizes from `getComputedStyle(...).gridTemplateColumns/Rows`,
+     * then on `mousemove` recomputes the affected tracks and writes
+     * a fresh template back. `mouseup` stops the drag.
+     *
+     * Track layout (5 cols × 3 rows):
+     *   columns: [sidebar | sp-side | center | sp-right | right]
+     *   rows:    [top | sp-bottom | bottom]
+     *
+     * The three splitters drive different track adjustments:
+     *   - sidebar splitter: column 0 (sidebar width)
+     *   - right splitter:   columns 2 + 4 (center grows, right shrinks
+     *     by the same amount; both kept fixed-px after first drag)
+     *   - bottom splitter:  row 0 (top-row height) + row 2 (bottom)
+     *
+     * Min sizes (`MIN_PX`) keep panels from collapsing to nothing.
+     */
+    _wireSplitters() {
+        const MIN_PX = 200;
+        const main = this._main;
+        if (!main) return;
+
+        // Read current grid track sizes as numbers (parsed from
+        // `getComputedStyle().gridTemplateColumns/Rows`).
+        const readTracks = (axis) => {
+            const cs = getComputedStyle(main);
+            const value = axis === 'col'
+                ? cs.gridTemplateColumns
+                : cs.gridTemplateRows;
+            return value.split(' ').map((v) => parseFloat(v));
+        };
+
+        const writeTracks = (axis, tracks) => {
+            const css = tracks.map((v) => `${v}px`).join(' ');
+            if (axis === 'col') main.style.gridTemplateColumns = css;
+            else main.style.gridTemplateRows = css;
+        };
+
+        const splitters = main.querySelectorAll('.splitter');
+        for (const sp of splitters) {
+            sp.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                const which = sp.dataset.resize;
+                const axis = sp.classList.contains('col') ? 'col' : 'row';
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const startTracks = readTracks(axis);
+                sp.classList.add('dragging');
+                document.body.style.cursor = axis === 'col' ? 'col-resize' : 'row-resize';
+
+                const onMove = (ev) => {
+                    const tracks = [...startTracks];
+                    if (which === 'sidebar') {
+                        // Sidebar grows/shrinks — the difference has
+                        // to come *out of* center+right combined,
+                        // otherwise the total exceeds the container
+                        // width and the right column gets clipped.
+                        // Distribute the negative delta proportional
+                        // to each track's starting share so a
+                        // dragged-narrow center stays narrow vs.
+                        // a wide right.
+                        const dx = ev.clientX - startX;
+                        const otherTotal = startTracks[2] + startTracks[4];
+                        const minOther = 2 * MIN_PX;
+                        // Cap sidebar growth so center+right have at
+                        // least MIN_PX each.
+                        const maxSidebar = startTracks[0] + (otherTotal - minOther);
+                        const newSidebar = Math.max(MIN_PX, Math.min(maxSidebar, startTracks[0] + dx));
+                        const newOther = otherTotal - (newSidebar - startTracks[0]);
+                        const ratio = otherTotal > 0 ? startTracks[2] / otherTotal : 0.5;
+                        tracks[0] = newSidebar;
+                        tracks[2] = Math.max(MIN_PX, newOther * ratio);
+                        tracks[4] = Math.max(MIN_PX, newOther - tracks[2]);
+                    } else if (which === 'right') {
+                        // Drag adjusts the boundary between center
+                        // (col 2) and right (col 4): one grows by
+                        // dx, the other shrinks by dx. Both get
+                        // pinned to fixed px once the user drags.
+                        const dx = ev.clientX - startX;
+                        const newCenter = Math.max(MIN_PX, startTracks[2] + dx);
+                        const newRight = Math.max(MIN_PX, startTracks[4] - dx);
+                        // If a clamp kicked in on either side, also
+                        // clamp the partner so the total doesn't
+                        // drift past the layout width.
+                        if (newCenter <= MIN_PX) {
+                            tracks[2] = MIN_PX;
+                            tracks[4] = startTracks[2] + startTracks[4] - MIN_PX;
+                        } else if (newRight <= MIN_PX) {
+                            tracks[4] = MIN_PX;
+                            tracks[2] = startTracks[2] + startTracks[4] - MIN_PX;
+                        } else {
+                            tracks[2] = newCenter;
+                            tracks[4] = newRight;
+                        }
+                    } else if (which === 'bottom') {
+                        // Drag the top/bottom boundary. Row 0 (top)
+                        // grows by dy, row 2 (bottom) shrinks by dy.
+                        const dy = ev.clientY - startY;
+                        const newTop = Math.max(MIN_PX, startTracks[0] + dy);
+                        const newBottom = Math.max(MIN_PX, startTracks[2] - dy);
+                        if (newTop <= MIN_PX) {
+                            tracks[0] = MIN_PX;
+                            tracks[2] = startTracks[0] + startTracks[2] - MIN_PX;
+                        } else if (newBottom <= MIN_PX) {
+                            tracks[2] = MIN_PX;
+                            tracks[0] = startTracks[0] + startTracks[2] - MIN_PX;
+                        } else {
+                            tracks[0] = newTop;
+                            tracks[2] = newBottom;
+                        }
+                    }
+                    writeTracks(axis, tracks);
+                };
+
+                const onUp = () => {
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('mouseup', onUp);
+                    sp.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                };
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', onUp);
+            });
+        }
     }
 
     /**
@@ -1045,6 +1222,48 @@ export class BintApp extends HTMLElement {
         });
         if (this._emulation) {
             this._emulation.setActive(view === 'emulation');
+        }
+    }
+
+    /**
+     * If the URL carries `?example=NAME`, fetch `examples/NAME`
+     * (relative to the page) and load it as if the user had
+     * dropped it on the window. A `#0xADDR` fragment, if present,
+     * triggers a seek after load completes. The name is restricted
+     * to a single path component so a stray query param can't
+     * coerce a fetch outside the examples dir.
+     */
+    async _maybeLoadExample() {
+        const name = new URLSearchParams(window.location.search).get('example');
+        if (!name) return;
+        if (name.includes('/') || name.includes('\\') || name.startsWith('.')) {
+            console.warn(`Refusing to load example with invalid name: ${name}`);
+            return;
+        }
+
+        // Capture the hash *before* loading: BINARY_LOADED fires
+        // _onSeekChanged(entry_point), which overwrites the URL hash
+        // via pushState before this method's await on _loadFile resolves.
+        const requestedHash = window.location.hash;
+
+        try {
+            const response = await fetch(`examples/${name}`);
+            if (!response.ok) {
+                console.warn(`Failed to fetch example ${name}: ${response.status}`);
+                return;
+            }
+            const file = new File([await response.arrayBuffer()], name);
+            await this._loadFile(file);
+
+            if (requestedHash.startsWith('#0x')) {
+                try {
+                    await this._api.setSeek(requestedHash.slice(1));
+                } catch (e) {
+                    console.warn(`Example seek to ${requestedHash} failed: ${e}`);
+                }
+            }
+        } catch (e) {
+            console.error(`Failed to load example ${name}:`, e);
         }
     }
 
@@ -1180,6 +1399,15 @@ export class BintApp extends HTMLElement {
         const collapsed = e.detail?.collapsed;
         // If it's the hex panel, toggle the grid layout and show/hide the collapsed tab
         if (panel === this._hexPanel || e.target === this._hexPanel) {
+            // Inline `grid-template-columns` written by a previous
+            // splitter drag would otherwise win over the
+            // `.main.hex-collapsed` rule, leaving the disassembly
+            // stuck at its pre-collapse width with empty space
+            // where the hex panel was. Clearing it on each toggle
+            // hands control back to whichever class rule applies
+            // (3-col when collapsed, 5-col when restored), and the
+            // user can re-drag from a clean state.
+            this._main.style.gridTemplateColumns = '';
             if (collapsed) {
                 this._main.classList.add('hex-collapsed');
                 this._hexCollapsedTab.classList.add('visible');
