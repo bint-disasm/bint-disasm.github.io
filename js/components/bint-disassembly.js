@@ -248,7 +248,7 @@ template.innerHTML = `
             letter-spacing: 0.5px;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 768px), (pointer: coarse) and (max-width: 1024px) {
             /* Bytes column eats too much horizontal real estate on
              * a phone — and the disassembly text is what people
              * actually want to read. Hide it under the breakpoint. */

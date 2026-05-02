@@ -36,7 +36,13 @@ template.innerHTML = `
         :host {
             display: flex;
             flex-direction: column;
+            /* 100dvh = the *currently visible* viewport, so the
+             * mobile bottom bar (Safari URL bar, Chrome's address
+             * strip) doesn't overlap the bottom UI. Falls back to
+             * 100vh on browsers without dvh support — slightly
+             * worse there but no broken layout. */
             height: 100vh;
+            height: 100dvh;
             background: var(--bg-primary);
         }
 
@@ -210,7 +216,7 @@ template.innerHTML = `
             min-height: 0;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 768px), (pointer: coarse) and (max-width: 1024px) {
             .main {
                 --sidebar-w: 200px;
             }
@@ -556,7 +562,7 @@ template.innerHTML = `
          * .main element gets a data-mobile-view attribute set by JS
          * to pick which container is shown.
          * ====================================================== */
-        @media (max-width: 768px) {
+        @media (max-width: 768px), (pointer: coarse) and (max-width: 1024px) {
             /* Tighten the header — file metadata can wrap or wash
              * out, and the toolbar buttons are the only critical
              * controls. */
@@ -1170,7 +1176,7 @@ export class BintApp extends HTMLElement {
         // No-op on desktop: every panel is visible at once.
         events.on(Events.SELECTION_CHANGED, ({ type } = {}) => {
             if (type !== 'name') return;
-            if (!window.matchMedia('(max-width: 768px)').matches) return;
+            if (!window.matchMedia('(max-width: 768px), (pointer: coarse) and (max-width: 1024px)').matches) return;
             this._setMobileView('disasm');
         });
     }
@@ -1739,7 +1745,7 @@ export class BintApp extends HTMLElement {
      */
     _setupModalHandlers() {
         // Close modal when clicking overlay background
-        for (const modal of [this._modalSeek, this._modalRename, this._modalHelp]) {
+        for (const modal of [this._modalSeek, this._modalRename, this._modalHelp, this._modalOptions]) {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     this._closeModal();
