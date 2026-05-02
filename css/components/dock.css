@@ -1,0 +1,194 @@
+/* Dock container layout styles */
+
+bint-dock-container {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: 1fr auto;
+    gap: 1px;
+    height: 100%;
+    background: var(--border-subtle);
+}
+
+/* Dock zones */
+.dock-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--bg-primary);
+    overflow: hidden;
+}
+
+.dock-zone-left {
+    grid-row: 1 / -1;
+    grid-column: 1;
+    width: 280px;
+    min-width: 200px;
+    max-width: 400px;
+    resize: horizontal;
+    overflow: auto;
+}
+
+.dock-zone-center {
+    grid-row: 1;
+    grid-column: 2;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dock-zone-right {
+    grid-row: 1 / -1;
+    grid-column: 3;
+    width: 280px;
+    min-width: 200px;
+    max-width: 400px;
+    resize: horizontal;
+    overflow: auto;
+    direction: rtl; /* Makes resize handle appear on left */
+}
+
+.dock-zone-right > * {
+    direction: ltr;
+}
+
+.dock-zone-bottom {
+    grid-row: 2;
+    grid-column: 2;
+    height: 200px;
+    min-height: 100px;
+    max-height: 50vh;
+    resize: vertical;
+    overflow: auto;
+}
+
+/* Main area split (center contains main + bottom) */
+.dock-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.dock-main-content {
+    flex: 1;
+    overflow: auto;
+}
+
+/* Tab bar for tabbed panels */
+.dock-tabs {
+    display: flex;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.dock-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.dock-tab {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.dock-tab:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.dock-tab.active {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--accent-primary);
+}
+
+.dock-tab-close {
+    opacity: 0;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    font-size: 10px;
+}
+
+.dock-tab:hover .dock-tab-close {
+    opacity: 1;
+}
+
+.dock-tab-close:hover {
+    background: var(--accent-error);
+    color: white;
+}
+
+/* Drop indicators */
+.dock-drop-indicator {
+    position: absolute;
+    background: var(--accent-primary);
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: var(--z-panel-drag);
+}
+
+.dock-drop-indicator.active {
+    opacity: 0.5;
+}
+
+/* Resizer handles */
+.dock-resizer {
+    background: transparent;
+    position: relative;
+    z-index: 5;
+}
+
+.dock-resizer-h {
+    width: 4px;
+    cursor: ew-resize;
+}
+
+.dock-resizer-v {
+    height: 4px;
+    cursor: ns-resize;
+}
+
+.dock-resizer:hover,
+.dock-resizer.active {
+    background: var(--accent-primary);
+}
+
+/* Collapsed zones */
+.dock-zone.collapsed {
+    width: 32px !important;
+    min-width: 32px;
+}
+
+.dock-zone.collapsed .dock-zone-content {
+    display: none;
+}
+
+.dock-zone-collapse-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-sm);
+    gap: var(--space-sm);
+}
+
+.dock-zone-collapse-btn {
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    padding: var(--space-sm) var(--space-xs);
+    font-size: var(--font-size-sm);
+}

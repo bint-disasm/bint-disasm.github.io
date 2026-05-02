@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>bint decompiler smoke test</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; margin: 2em; }
+    #out { background: #1e1e1e; color: #d4d4d4; padding: 1em; white-space: pre;
+           font-family: ui-monospace, monospace; font-size: 13px; overflow: auto; }
+    #log { color: #666; font-family: ui-monospace, monospace; font-size: 12px; }
+    button { margin: 0.5em 0; padding: 0.5em 1em; }
+  </style>
+</head>
+<body>
+  <h1>bint decompiler smoke test</h1>
+  <p>Loads <code>dist/bint_decompiler.wasm</code>, preloads x86 spec files
+     and <code>ais3_crackme</code> into the virtual FS, and decompiles
+     <code>verify</code> @ <code>0x400520</code>.</p>
+  <button id="run">run</button>
+  <div id="log"></div>
+  <pre id="out"></pre>
+
+<script type="module">
+import BintDecompilerModule from './dist/bint_decompiler.js';
+
+const SPEC_FILES = [
+  'x86/data/languages/x86.ldefs',
+  'x86/data/languages/x86-64.sla',
+  'x86/data/languages/x86-64.pspec',
+  'x86/data/languages/x86.pspec',
+  'x86/data/languages/x86-64-compat32.pspec',
+  'x86/data/languages/x86-64-gcc.cspec',
+  'x86/data/languages/x86-64-win.cspec',
+  'x86/data/languages/x86gcc.cspec',
+  'x86/data/languages/x86win.cspec',
+];
+
+const log = (msg) => {
+  const el = document.getElementById('log');
+  el.textContent += msg + '\n';
+  console.log(msg);
+};
+
+async function fetchBytes(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url}: ${r.status}`);
+  return new Uint8Array(await r.arrayBuffer());
+}
+
+document.getElementById('run').addEventListener('click', async () => {
+  document.getElementById('log').textContent = '';
+  document.getElementById('out').textContent = '';
+
+  log('loading wasm module…');
+  const t0 = performance.now();
+  const Module = await BintDecompilerModule();
+  log(`module ready (${(performance.now() - t0).toFixed(0)} ms)`);
+
+  log('fetching spec files…');
+  const specBytes = await Promise.all(
+    SPEC_FILES.map((p) => fetchBytes('./spec/' + p).then((b) => [p, b]))
+  );
+
+  // Recreate the directory tree in the Emscripten virtual FS and write
+  // the fetched bytes in. Ghidra's SleighArchitecture::specpaths expects
+  // a `<...>/data/languages` directory per processor containing .ldefs.
+  log('writing spec files into virtual FS…');
+  const SPEC_ROOT = '/spec';
+  Module.FS.mkdir(SPEC_ROOT);
+  const mkdirs = new Set([SPEC_ROOT]);
+  for (const [path, bytes] of specBytes) {
+    const parts = path.split('/');
+    let cur = SPEC_ROOT;
+    for (let i = 0; i < parts.length - 1; i++) {
+      cur += '/' + parts[i];
+      if (!mkdirs.has(cur)) {
+        Module.FS.mkdir(cur);
+        mkdirs.add(cur);
+      }
+    }
+    Module.FS.writeFile(SPEC_ROOT + '/' + path, bytes);
+  }
+
+  log('fetching binary…');
+  const binBytes = await fetchBytes('./ais3_crackme');
+  log(`binary is ${binBytes.length} bytes`);
+
+  // Bind the C API via cwrap.
+  const add_spec_dir   = Module.cwrap('bint_decompiler_add_spec_dir',   'number', ['string']);
+  const create         = Module.cwrap('bint_decompiler_create',         'number', ['string', 'number', 'number', 'bigint']);
+  const add_symbol     = Module.cwrap('bint_decompiler_add_symbol',     'number', ['number', 'bigint', 'string']);
+  const add_readonly   = Module.cwrap('bint_decompiler_add_readonly',   'number', ['number', 'bigint', 'bigint']);
+  const decompile      = Module.cwrap('bint_decompiler_decompile',      'number', ['number', 'bigint', 'string']);
+  const free_string    = Module.cwrap('bint_decompiler_free_string',    null,     ['number']);
+  const destroy        = Module.cwrap('bint_decompiler_destroy',        null,     ['number']);
+
+  log('registering spec dir…');
+  if (add_spec_dir('/spec/x86/data/languages') !== 0) {
+    throw new Error('add_spec_dir failed');
+  }
+
+  // The ELF is mapped starting at its first loadable segment. For this
+  // crackme, the .text segment is at 0x400000 and the file-offset-to-vaddr
+  // mapping matches 1:1 up through 0x400000-ish. For a smoke test we cheat:
+  // map the whole file at 0x400000 and accept that addresses below the
+  // first PT_LOAD won't be readable (they're ELF headers anyway).
+  const BASE = 0x400000n;
+
+  // Copy the binary into wasm memory.
+  const binPtr = Module._malloc(binBytes.length);
+  Module.HEAPU8.set(binBytes, binPtr);
+
+  log('creating decompiler handle…');
+  const handle = create('x86:LE:64:default:gcc', binPtr, binBytes.length, BASE);
+  Module._free(binPtr);
+  if (!handle) throw new Error('create returned null');
+
+  // Register the function we're about to decompile — without a symbol at
+  // this address Ghidra names it FUN_400520 which is still valid but less
+  // readable. Also register a couple of imports so the decompile shows
+  // puts/verify names instead of func_0x...
+  add_symbol(handle, 0x400520n, 'verify');
+  add_symbol(handle, 0x4005c5n, 'main');
+  add_symbol(handle, 0x4003f0n, 'puts');
+  // Mark .rodata readonly (text segment is code; data segment is RW).
+  add_readonly(handle, 0x400000n, 0x1000n);
+
+  log('decompiling verify @ 0x400520…');
+  const t1 = performance.now();
+  const cstr = decompile(handle, 0x400520n, '');
+  const out = Module.UTF8ToString(cstr);
+  free_string(cstr);
+  log(`decompile took ${(performance.now() - t1).toFixed(0)} ms`);
+
+  document.getElementById('out').textContent = out;
+
+  destroy(handle);
+  log('done');
+});
+</script>
+</body>
+</html>

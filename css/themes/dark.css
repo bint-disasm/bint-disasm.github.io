@@ -1,0 +1,47 @@
+/* bint dark theme (default) */
+
+:root {
+    /* Background colors */
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-tertiary: #21262d;
+    --bg-hover: #30363d;
+    --bg-active: #484f58;
+
+    /* Text colors */
+    --text-primary: #c9d1d9;
+    --text-secondary: #8b949e;
+    --text-muted: #484f58;
+
+    /* Accent colors */
+    --accent-primary: #ff8c00;
+    --accent-secondary: #7ee787;
+    --accent-warning: #d29922;
+    --accent-error: #f85149;
+
+    /* Syntax highlighting */
+    --color-address: #ffa657;
+    --color-mnemonic: #79c0ff;
+    --color-register: #ff7b72;
+    --color-number: #a5d6ff;
+    --color-function: #d2a8ff;
+    --color-label: #7ee787;
+    --color-string: #a5d6ff;
+    --color-comment: #8b949e;
+    --color-bytes: #6e7681;
+    --color-section: #f0883e;
+    --color-branch-target: #d2a8ff;
+
+    /* Hex view byte colors */
+    --color-byte-printable: #58a6ff;
+    --color-byte-high: #d29922;
+
+    /* Borders */
+    --border-color: #30363d;
+    --border-subtle: #21262d;
+
+    /* Panel chrome */
+    --panel-header-bg: #161b22;
+    --panel-border: #30363d;
+    --panel-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}

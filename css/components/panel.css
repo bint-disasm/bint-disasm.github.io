@@ -1,0 +1,152 @@
+/* Panel component styles */
+
+bint-panel {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-secondary);
+    border: 1px solid var(--panel-border);
+    overflow: hidden;
+    min-width: 200px;
+    min-height: 100px;
+}
+
+bint-panel[collapsed] {
+    min-height: unset;
+}
+
+/* Panel header */
+.panel-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-xs) var(--space-sm);
+    background: var(--panel-header-bg);
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: grab;
+    user-select: none;
+}
+
+.panel-header:active {
+    cursor: grabbing;
+}
+
+.panel-header.dragging {
+    opacity: 0.8;
+}
+
+.panel-icon {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    width: 16px;
+    text-align: center;
+}
+
+.panel-title {
+    flex: 1;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.panel-actions {
+    display: flex;
+    gap: 2px;
+}
+
+.panel-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.panel-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.panel-btn-close:hover {
+    background: var(--accent-error);
+    color: white;
+}
+
+/* Panel content */
+.panel-content {
+    flex: 1;
+    overflow: auto;
+    padding: var(--space-sm);
+}
+
+bint-panel[collapsed] .panel-content {
+    display: none;
+}
+
+/* Panel resize handle */
+.panel-resize {
+    position: absolute;
+    background: transparent;
+}
+
+.panel-resize-e {
+    right: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+.panel-resize-s {
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    cursor: ns-resize;
+}
+
+.panel-resize-se {
+    right: 0;
+    bottom: 0;
+    width: 8px;
+    height: 8px;
+    cursor: nwse-resize;
+}
+
+.panel-resize:hover {
+    background: var(--accent-primary);
+}
+
+/* Panel loading state */
+.panel-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-xl);
+    color: var(--text-secondary);
+}
+
+/* Panel empty state */
+.panel-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-xl);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.panel-empty-icon {
+    font-size: 24px;
+    margin-bottom: var(--space-sm);
+}

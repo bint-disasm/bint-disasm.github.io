@@ -1,0 +1,86 @@
+/* Shared logo glitch effect styling */
+
+.logo-glitch {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: bold;
+    color: #ff8c00;
+    letter-spacing: 1px;
+    position: relative;
+}
+
+.logo-glitch::before,
+.logo-glitch::after {
+    content: "bin't";
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0.8;
+}
+
+.logo-glitch::before {
+    color: #ffffff;
+    clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+}
+
+.logo-glitch::after {
+    color: #ff6600;
+    clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+}
+
+/* Animation for continuous glitch (loading screen) */
+.logo-glitch.animate-continuous {
+    animation: logo-pulse 1.5s ease-in-out infinite, logo-glitch 200ms steps(2) infinite;
+}
+
+.logo-glitch.animate-continuous::before {
+    animation: logo-glitch-shift 200ms steps(2) infinite;
+}
+
+.logo-glitch.animate-continuous::after {
+    animation: logo-glitch-shift-reverse 200ms steps(2) infinite;
+}
+
+/* Animation for triggered glitch (header logo) */
+.logo-glitch.animate-triggered {
+    animation: logo-glitch 200ms steps(2) forwards;
+}
+
+.logo-glitch.animate-triggered::before {
+    animation: logo-glitch-shift 200ms steps(2) forwards;
+}
+
+.logo-glitch.animate-triggered::after {
+    animation: logo-glitch-shift-reverse 200ms steps(2) forwards;
+}
+
+@keyframes logo-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+@keyframes logo-glitch {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 1px); }
+    40% { transform: translate(2px, -1px); }
+    60% { transform: translate(-1px, -1px); }
+    80% { transform: translate(1px, 1px); }
+    100% { transform: translate(0); }
+}
+
+@keyframes logo-glitch-shift {
+    0% { transform: translate(0); }
+    20% { transform: translate(2px, -1px); }
+    40% { transform: translate(-3px, 1px); }
+    60% { transform: translate(1px, 0); }
+    80% { transform: translate(-2px, -1px); }
+    100% { transform: translate(0); }
+}
+
+@keyframes logo-glitch-shift-reverse {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 1px); }
+    40% { transform: translate(3px, 0); }
+    60% { transform: translate(-1px, 1px); }
+    80% { transform: translate(2px, -1px); }
+    100% { transform: translate(0); }
+}

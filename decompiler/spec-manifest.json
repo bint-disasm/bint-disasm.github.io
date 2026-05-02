@@ -1,0 +1,448 @@
+{
+  "files": [
+    {
+      "path": "AARCH64/data/languages/AARCH64.cspec",
+      "size": 8276
+    },
+    {
+      "path": "AARCH64/data/languages/AARCH64.ldefs",
+      "size": 3682
+    },
+    {
+      "path": "AARCH64/data/languages/AARCH64.pspec",
+      "size": 5512
+    },
+    {
+      "path": "AARCH64/data/languages/AARCH64.sla",
+      "size": 491505
+    },
+    {
+      "path": "AARCH64/data/languages/AARCH64BE.sla",
+      "size": 497333
+    },
+    {
+      "path": "AARCH64/data/languages/AARCH64_AppleSilicon.sla",
+      "size": 493491
+    },
+    {
+      "path": "AARCH64/data/languages/AARCH64_apple.cspec",
+      "size": 8548
+    },
+    {
+      "path": "AARCH64/data/languages/AARCH64_golang.cspec",
+      "size": 10038
+    },
+    {
+      "path": "AARCH64/data/languages/AARCH64_ilp32.cspec",
+      "size": 6359
+    },
+    {
+      "path": "AARCH64/data/languages/AARCH64_swift.cspec",
+      "size": 12239
+    },
+    {
+      "path": "AARCH64/data/languages/AARCH64_win.cspec",
+      "size": 9510
+    },
+    {
+      "path": "AARCH64/data/languages/AppleSilicon.ldefs",
+      "size": 1001
+    },
+    {
+      "path": "ARM/data/languages/ARM.cspec",
+      "size": 13580
+    },
+    {
+      "path": "ARM/data/languages/ARM.ldefs",
+      "size": 19966
+    },
+    {
+      "path": "ARM/data/languages/ARM4_be.sla",
+      "size": 46034
+    },
+    {
+      "path": "ARM/data/languages/ARM4_le.sla",
+      "size": 46078
+    },
+    {
+      "path": "ARM/data/languages/ARM4t_be.sla",
+      "size": 72055
+    },
+    {
+      "path": "ARM/data/languages/ARM4t_le.sla",
+      "size": 72412
+    },
+    {
+      "path": "ARM/data/languages/ARM5_be.sla",
+      "size": 50048
+    },
+    {
+      "path": "ARM/data/languages/ARM5_le.sla",
+      "size": 50098
+    },
+    {
+      "path": "ARM/data/languages/ARM5t_be.sla",
+      "size": 77382
+    },
+    {
+      "path": "ARM/data/languages/ARM5t_le.sla",
+      "size": 77801
+    },
+    {
+      "path": "ARM/data/languages/ARM6_be.sla",
+      "size": 164535
+    },
+    {
+      "path": "ARM/data/languages/ARM6_le.sla",
+      "size": 165162
+    },
+    {
+      "path": "ARM/data/languages/ARM7_be.sla",
+      "size": 249429
+    },
+    {
+      "path": "ARM/data/languages/ARM7_le.sla",
+      "size": 250727
+    },
+    {
+      "path": "ARM/data/languages/ARM8_be.sla",
+      "size": 264306
+    },
+    {
+      "path": "ARM/data/languages/ARM8_le.sla",
+      "size": 265986
+    },
+    {
+      "path": "ARM/data/languages/ARM8m_be.sla",
+      "size": 265716
+    },
+    {
+      "path": "ARM/data/languages/ARM8m_le.sla",
+      "size": 267367
+    },
+    {
+      "path": "ARM/data/languages/ARMCortex.pspec",
+      "size": 2263
+    },
+    {
+      "path": "ARM/data/languages/ARM_apcs.cspec",
+      "size": 8370
+    },
+    {
+      "path": "ARM/data/languages/ARM_v45.cspec",
+      "size": 5986
+    },
+    {
+      "path": "ARM/data/languages/ARM_v45.pspec",
+      "size": 1863
+    },
+    {
+      "path": "ARM/data/languages/ARM_win.cspec",
+      "size": 7962
+    },
+    {
+      "path": "ARM/data/languages/ARMt.pspec",
+      "size": 3252
+    },
+    {
+      "path": "ARM/data/languages/ARMtTHUMB.pspec",
+      "size": 3359
+    },
+    {
+      "path": "ARM/data/languages/ARMt_v45.pspec",
+      "size": 2078
+    },
+    {
+      "path": "ARM/data/languages/ARMt_v6.pspec",
+      "size": 2147
+    },
+    {
+      "path": "MIPS/data/languages/mips.ldefs",
+      "size": 15444
+    },
+    {
+      "path": "MIPS/data/languages/mips32.pspec",
+      "size": 3665
+    },
+    {
+      "path": "MIPS/data/languages/mips32R6.pspec",
+      "size": 3741
+    },
+    {
+      "path": "MIPS/data/languages/mips32R6be.sla",
+      "size": 158856
+    },
+    {
+      "path": "MIPS/data/languages/mips32R6le.sla",
+      "size": 158570
+    },
+    {
+      "path": "MIPS/data/languages/mips32_eabi.cspec",
+      "size": 4484
+    },
+    {
+      "path": "MIPS/data/languages/mips32_fp64.cspec",
+      "size": 2679
+    },
+    {
+      "path": "MIPS/data/languages/mips32be.cspec",
+      "size": 6548
+    },
+    {
+      "path": "MIPS/data/languages/mips32be.sla",
+      "size": 161226
+    },
+    {
+      "path": "MIPS/data/languages/mips32le.cspec",
+      "size": 6271
+    },
+    {
+      "path": "MIPS/data/languages/mips32le.sla",
+      "size": 160950
+    },
+    {
+      "path": "MIPS/data/languages/mips32micro.pspec",
+      "size": 3728
+    },
+    {
+      "path": "MIPS/data/languages/mips64.pspec",
+      "size": 3740
+    },
+    {
+      "path": "MIPS/data/languages/mips64R6.pspec",
+      "size": 3741
+    },
+    {
+      "path": "MIPS/data/languages/mips64_32_n32.cspec",
+      "size": 4947
+    },
+    {
+      "path": "MIPS/data/languages/mips64_32_o32.cspec",
+      "size": 5153
+    },
+    {
+      "path": "MIPS/data/languages/mips64_32_o64.cspec",
+      "size": 3481
+    },
+    {
+      "path": "MIPS/data/languages/mips64be.cspec",
+      "size": 5465
+    },
+    {
+      "path": "MIPS/data/languages/mips64be.sla",
+      "size": 172573
+    },
+    {
+      "path": "MIPS/data/languages/mips64le.cspec",
+      "size": 4994
+    },
+    {
+      "path": "MIPS/data/languages/mips64le.sla",
+      "size": 172382
+    },
+    {
+      "path": "MIPS/data/languages/mips64micro.pspec",
+      "size": 3592
+    },
+    {
+      "path": "PowerPC/data/languages/ppc.ldefs",
+      "size": 17562
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32.cspec",
+      "size": 4937
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32.pspec",
+      "size": 58049
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_4xx_be.sla",
+      "size": 108009
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_4xx_le.sla",
+      "size": 108118
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_be.sla",
+      "size": 133121
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_be_Mac.cspec",
+      "size": 2175
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_e500_be.cspec",
+      "size": 2379
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_e500_be.sla",
+      "size": 149453
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_e500_le.cspec",
+      "size": 2348
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_e500_le.sla",
+      "size": 149672
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_e500mc_be.cspec",
+      "size": 2264
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_e500mc_be.sla",
+      "size": 108160
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_e500mc_le.cspec",
+      "size": 2264
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_e500mc_le.sla",
+      "size": 108295
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_le.sla",
+      "size": 133472
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_mpc8270.pspec",
+      "size": 51397
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_quicciii_be.sla",
+      "size": 113986
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_32_quicciii_le.sla",
+      "size": 114125
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64.pspec",
+      "size": 58119
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_32.cspec",
+      "size": 4749
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_be.cspec",
+      "size": 7299
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_be.sla",
+      "size": 140469
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_be_Mac.cspec",
+      "size": 3691
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_isa_altivec_be.sla",
+      "size": 187059
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_isa_altivec_le.sla",
+      "size": 188300
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_isa_altivec_vle_be.sla",
+      "size": 201893
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_isa_be.sla",
+      "size": 197564
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_isa_le.sla",
+      "size": 198334
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_isa_vle_be.sla",
+      "size": 214256
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_le.cspec",
+      "size": 6878
+    },
+    {
+      "path": "PowerPC/data/languages/ppc_64_le.sla",
+      "size": 140827
+    },
+    {
+      "path": "x86/data/languages/x86-16-real.pspec",
+      "size": 944
+    },
+    {
+      "path": "x86/data/languages/x86-16.cspec",
+      "size": 4862
+    },
+    {
+      "path": "x86/data/languages/x86-16.pspec",
+      "size": 955
+    },
+    {
+      "path": "x86/data/languages/x86-32-golang.cspec",
+      "size": 8897
+    },
+    {
+      "path": "x86/data/languages/x86-64-compat32.pspec",
+      "size": 7124
+    },
+    {
+      "path": "x86/data/languages/x86-64-gcc.cspec",
+      "size": 12182
+    },
+    {
+      "path": "x86/data/languages/x86-64-golang.cspec",
+      "size": 13124
+    },
+    {
+      "path": "x86/data/languages/x86-64-swift.cspec",
+      "size": 8266
+    },
+    {
+      "path": "x86/data/languages/x86-64-win.cspec",
+      "size": 7474
+    },
+    {
+      "path": "x86/data/languages/x86-64.pspec",
+      "size": 11721
+    },
+    {
+      "path": "x86/data/languages/x86-64.sla",
+      "size": 486146
+    },
+    {
+      "path": "x86/data/languages/x86.ldefs",
+      "size": 5390
+    },
+    {
+      "path": "x86/data/languages/x86.pspec",
+      "size": 9859
+    },
+    {
+      "path": "x86/data/languages/x86.sla",
+      "size": 431145
+    },
+    {
+      "path": "x86/data/languages/x86borland.cspec",
+      "size": 4238
+    },
+    {
+      "path": "x86/data/languages/x86delphi.cspec",
+      "size": 2740
+    },
+    {
+      "path": "x86/data/languages/x86gcc.cspec",
+      "size": 12938
+    },
+    {
+      "path": "x86/data/languages/x86win.cspec",
+      "size": 10875
+    }
+  ]
+}

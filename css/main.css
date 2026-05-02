@@ -1,0 +1,327 @@
+/* bint web frontend - main styles */
+
+/* Reset */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Root variables - Dark theme by default */
+:root {
+    /* Background colors */
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-tertiary: #21262d;
+    --bg-hover: #30363d;
+    --bg-active: #484f58;
+
+    /* Text colors */
+    --text-primary: #c9d1d9;
+    --text-secondary: #8b949e;
+    --text-muted: #484f58;
+
+    /* Accent colors */
+    --accent-primary: #58a6ff;
+    --accent-secondary: #7ee787;
+    --accent-warning: #d29922;
+    --accent-error: #f85149;
+
+    /* Syntax highlighting - code/disassembly */
+    --color-address: #ffa657;
+    --color-mnemonic: #79c0ff;
+    --color-register: #ff7b72;
+    --color-number: #a5d6ff;
+    --color-function: #d2a8ff;
+    --color-label: #7ee787;
+    --color-string: #a5d6ff;
+    --color-comment: #8b949e;
+    --color-bytes: #8b949e;
+    --color-section: #f0883e;
+
+    /* Borders */
+    --border-color: #30363d;
+    --border-subtle: #21262d;
+
+    /* Panel chrome */
+    --panel-header-bg: #161b22;
+    --panel-border: #30363d;
+    --panel-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+    /* Fonts */
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', Consolas, monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* Body-text scale is flat at 12px; only headings get a bump. Tokens
+       kept distinct so existing usage sites continue to work if we ever
+       want to restore a proper scale. */
+    --font-size-xs: 0.75rem;    /* 12px */
+    --font-size-sm: 0.75rem;    /* 12px */
+    --font-size-base: 0.75rem;  /* 12px */
+    --font-size-lg: 0.875rem;   /* 14px */
+
+    /* Spacing */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 24px;
+
+    /* Transitions */
+    --transition-fast: 100ms ease;
+    --transition-normal: 200ms ease;
+
+    /* Z-index layers */
+    --z-panel: 10;
+    --z-panel-drag: 100;
+    --z-menu: 200;
+    --z-modal: 300;
+    --z-tooltip: 400;
+}
+
+/* Base styles */
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-base);
+    line-height: 1.5;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling - thin and subtle */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox scrollbar styling */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+/* Safari - hide scrollbars (can't style them properly) */
+@supports (-webkit-hyphens: none) {
+    * { scrollbar-width: none; }
+    ::-webkit-scrollbar { display: none; }
+}
+
+/* Selection */
+::selection {
+    background-color: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
+/* Focus styles */
+:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+/* Links */
+a {
+    color: var(--accent-primary);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Clickable addresses */
+.address {
+    color: var(--color-address);
+    cursor: pointer;
+    border-bottom: 1px dotted var(--color-address);
+}
+
+.address:hover {
+    color: var(--accent-primary);
+    border-bottom-color: var(--accent-primary);
+}
+
+/* Code/instruction highlighting */
+.mnemonic {
+    color: var(--color-mnemonic);
+    font-weight: 500;
+}
+
+.register {
+    color: var(--color-register);
+}
+
+.number {
+    color: var(--color-number);
+}
+
+.function {
+    color: var(--color-function);
+}
+
+.label {
+    color: var(--color-label);
+}
+
+.string {
+    color: var(--color-string);
+}
+
+.comment {
+    color: var(--color-comment);
+    font-style: italic;
+}
+
+.bytes {
+    color: var(--color-bytes);
+    letter-spacing: 0.5px;
+}
+
+.section {
+    color: var(--color-section);
+}
+
+/* Utility classes */
+.text-muted {
+    color: var(--text-muted);
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+}
+
+.mono {
+    font-family: var(--font-mono);
+}
+
+.sans {
+    font-family: var(--font-sans);
+}
+
+/* Button styles */
+button {
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+button:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-muted);
+}
+
+button:active {
+    background: var(--bg-active);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Input styles */
+input, textarea {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-base);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: 4px;
+}
+
+input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+/* Table styles */
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th, td {
+    text-align: left;
+    padding: var(--space-xs) var(--space-sm);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+th {
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+tr:hover td {
+    background: var(--bg-secondary);
+}
+
+/* Loading spinner */
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Status indicators */
+.status-success {
+    color: var(--accent-secondary);
+}
+
+.status-warning {
+    color: var(--accent-warning);
+}
+
+.status-error {
+    color: var(--accent-error);
+}
+
+/* Keyboard shortcut hints */
+kbd {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: 1px 4px;
+    box-shadow: 0 1px 0 var(--border-color);
+}

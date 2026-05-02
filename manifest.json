@@ -1,0 +1,23 @@
+{
+    "name": "bin't - Binary Analysis Tool",
+    "short_name": "bin't",
+    "description": "Interactive disassembler, hex editor, and binary analysis tool",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0d1117",
+    "theme_color": "#ff8c00",
+    "orientation": "landscape",
+    "icons": [
+        {
+            "src": "icons/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "icons/icon.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
+        }
+    ]
+}

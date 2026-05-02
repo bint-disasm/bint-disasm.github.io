@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bin't - Binary Analysis Tool</title>
+
+    <!-- Preload fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/themes/dark.css">
+    <link rel="stylesheet" href="css/components/panel.css">
+    <link rel="stylesheet" href="css/components/dock.css">
+    <link rel="stylesheet" href="css/components/logo.css">
+    <link rel="stylesheet" href="css/vendor/prism-tomorrow.css">
+
+    <!-- Prism.js (UMD) for C syntax highlighting in the decompile panel.
+         Loaded here rather than imported from the web component because
+         it's a UMD bundle, not an ES module, and exposes `window.Prism`. -->
+    <script src="js/vendor/prism.js"></script>
+
+    <!-- Dagre (UMD) for layered graph layout used by the disassembly
+         panel's graph mode. Exposes `window.dagre`. Layout-only — we
+         render the result ourselves with absolutely-positioned divs +
+         an SVG layer for edges. -->
+    <script src="js/vendor/dagre.min.js"></script>
+
+    <!-- Favicon and PWA -->
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ff8c00">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="bin't">
+
+    <style>
+        /* Loading screen before WASM initializes */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: #0d1117;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s;
+        }
+
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-logo {
+            font-size: 48px;
+            letter-spacing: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Initial loading screen -->
+    <div id="loading-screen">
+        <div class="loading-logo logo-glitch animate-continuous">bin't</div>
+    </div>
+
+    <!-- Main application -->
+    <bint-app></bint-app>
+
+    <!-- Load main script as module -->
+    <script type="module" src="js/main.js"></script>
+
+    <script>
+        // Register service worker for PWA. Skip on localhost so dev
+        // edits aren't masked by stale caches — and proactively
+        // unregister any leftover SW from a prior dev session, which
+        // would otherwise keep serving cached assets even though we
+        // never re-register it.
+        if ('serviceWorker' in navigator) {
+            const host = location.hostname;
+            const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+            if (isLocal) {
+                navigator.serviceWorker.getRegistrations().then((regs) => {
+                    for (const r of regs) r.unregister();
+                });
+                if (window.caches) {
+                    caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+                }
+            } else {
+                navigator.serviceWorker.register('/sw.js').catch((err) => {
+                    console.warn('Service worker registration failed:', err);
+                });
+            }
+        }
+
+        // Hide loading screen when app is ready
+        window.addEventListener('load', () => {
+            // Give a small delay for WASM to start loading
+            setTimeout(() => {
+                document.getElementById('loading-screen').classList.add('hidden');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

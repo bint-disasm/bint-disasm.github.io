@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>bint decompiler worker smoke test</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; margin: 2em; }
+    #out { background: #1e1e1e; color: #d4d4d4; padding: 1em; white-space: pre;
+           font-family: ui-monospace, monospace; font-size: 13px; overflow: auto;
+           border-radius: 4px; }
+    #log { color: #666; font-family: ui-monospace, monospace; font-size: 12px;
+           white-space: pre; margin: 1em 0; }
+    button { margin: 0.5em 0.5em 0.5em 0; padding: 0.5em 1em; }
+  </style>
+</head>
+<body>
+  <h1>bint decompiler — worker + lazy FS</h1>
+  <p>Spec files come from <code>spec/</code> on demand (lazy fetch via worker).
+     Binary is <code>ais3_crackme</code>. Functions: <code>verify</code>, <code>main</code>.</p>
+  <button id="init">1. init worker</button>
+  <button id="open" disabled>2. open binary</button>
+  <button id="decompile-verify" disabled>3. decompile verify</button>
+  <button id="decompile-main" disabled>4. decompile main</button>
+  <div id="log"></div>
+  <pre id="out"></pre>
+
+<script type="module">
+import { DecompilerClient } from './client.js';
+
+const log = (msg) => {
+    document.getElementById('log').textContent += msg + '\n';
+    console.log(msg);
+};
+
+let client = null;
+let session = null;
+
+document.getElementById('init').addEventListener('click', async () => {
+    document.getElementById('log').textContent = '';
+    const t0 = performance.now();
+    client = new DecompilerClient('./worker.js');
+    await client.init({
+        specBaseUrl: new URL('./spec/', location.href).toString(),
+        manifestUrl: './spec-manifest.json',
+    });
+    log(`worker ready (${(performance.now() - t0).toFixed(0)} ms)`);
+    document.getElementById('open').disabled = false;
+});
+
+document.getElementById('open').addEventListener('click', async () => {
+    const t0 = performance.now();
+    const bytes = new Uint8Array(await (await fetch('./ais3_crackme')).arrayBuffer());
+    log(`binary ${bytes.length} bytes`);
+    session = await client.open({
+        languageId: 'x86:LE:64:default:gcc',
+        bytes,
+        baseAddr: 0x400000,
+        symbols: [
+            [0x400520, 'verify'],
+            [0x4005c5, 'main'],
+            [0x4003f0, 'puts'],
+            [0x400400, '__libc_start_main'],
+        ],
+        readonly: [
+            [0x400000, 0x1000], // .text + .rodata on this binary sit together
+        ],
+    });
+    log(`session open (${(performance.now() - t0).toFixed(0)} ms)`);
+    document.getElementById('decompile-verify').disabled = false;
+    document.getElementById('decompile-main').disabled = false;
+});
+
+async function decompileAt(addr, name) {
+    document.getElementById('out').textContent = '';
+    const t0 = performance.now();
+    const code = await session.decompile(addr, name);
+    log(`decompile ${name} (${(performance.now() - t0).toFixed(0)} ms)`);
+    document.getElementById('out').textContent = code;
+}
+
+document.getElementById('decompile-verify').addEventListener('click',
+    () => decompileAt(0x400520, 'verify'));
+document.getElementById('decompile-main').addEventListener('click',
+    () => decompileAt(0x4005c5, 'main'));
+</script>
+</body>
+</html>
