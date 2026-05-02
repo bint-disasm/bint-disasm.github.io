@@ -195,10 +195,14 @@ template.innerHTML = `
          * panel content). */
         .main {
             --splitter-w: 6px;
+            /* Sidebar default width. The mobile media query below
+             * narrows this so phones don't lose half the screen to
+             * the names panel before any user interaction. */
+            --sidebar-w: 420px;
             flex: 1;
             display: grid;
             grid-template-columns:
-                420px var(--splitter-w) minmax(0, 1fr) var(--splitter-w) minmax(0, 1fr);
+                var(--sidebar-w) var(--splitter-w) minmax(0, 1fr) var(--splitter-w) minmax(0, 1fr);
             grid-template-rows:
                 minmax(0, 1fr) var(--splitter-w) 300px;
             background: var(--bg-primary);
@@ -206,11 +210,29 @@ template.innerHTML = `
             min-height: 0;
         }
 
+        @media (max-width: 768px) {
+            .main {
+                --sidebar-w: 200px;
+            }
+        }
+
+        /* Coarse pointer = touchscreen / stylus. A 6px-wide splitter
+         * is essentially impossible to land a fingertip on, so widen
+         * it (and the corresponding grid track via --splitter-w) to
+         * a finger-friendly hit target. The visible track is the
+         * same size as the hit area so the user can see what they
+         * grabbed. Mouse users still get the slim 6px line. */
+        @media (pointer: coarse) {
+            .main {
+                --splitter-w: 10px;
+            }
+        }
+
         /* When hex panel is collapsed: drop the splitter and right
          * column from the grid template; the rest still resolves. */
         .main.hex-collapsed {
             grid-template-columns:
-                420px var(--splitter-w) minmax(0, 1fr);
+                var(--sidebar-w) var(--splitter-w) minmax(0, 1fr);
         }
 
         .main.hex-collapsed .right,
@@ -221,6 +243,10 @@ template.innerHTML = `
         .splitter {
             background: var(--border-subtle);
             user-select: none;
+            /* Block native touch gestures (scroll/pinch) on the
+             * splitter so a finger drag stays a drag instead of
+             * scrolling the page on mobile. */
+            touch-action: none;
         }
         .splitter:hover,
         .splitter.dragging {
@@ -481,6 +507,111 @@ template.innerHTML = `
             color: var(--text-secondary);
         }
 
+        /* Mobile bottom tab bar — replaces the statusbar on phone-sized
+         * screens. Hidden by default; the @media block below flips it
+         * on. Each button maps to one of the four mobile views and
+         * sets data-mobile-view on .main. */
+        .mobile-tabs {
+            display: none;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+        .mobile-tabs button {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            padding: 10px 4px;
+            font-family: inherit;
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            border-top: 2px solid transparent;
+        }
+        .mobile-tabs button.active {
+            color: var(--text-primary);
+            border-top-color: var(--accent-primary);
+            background: var(--bg-primary);
+        }
+        .mobile-tabs button .tab-icon {
+            font-weight: bold;
+            font-size: var(--font-size-sm);
+            color: inherit;
+        }
+
+        /* ======================================================
+         * Mobile single-panel layout. The desktop split-pane grid
+         * is unusable on a phone — instead, show one panel at a
+         * time and let the user switch via the bottom tab bar. The
+         * .main element gets a data-mobile-view attribute set by JS
+         * to pick which container is shown.
+         * ====================================================== */
+        @media (max-width: 768px) {
+            /* Tighten the header — file metadata can wrap or wash
+             * out, and the toolbar buttons are the only critical
+             * controls. */
+            .header {
+                gap: var(--space-sm);
+                padding: var(--space-xs);
+                flex-wrap: wrap;
+            }
+            .file-path,
+            .file-info {
+                display: none;
+            }
+
+            /* Splitters and the desktop hex-collapsed-tab are
+             * meaningless when each panel is its own page. */
+            .splitter,
+            .hex-collapsed-tab {
+                display: none !important;
+            }
+
+            /* Replace the desktop statusbar with the mobile tab bar. */
+            .statusbar { display: none; }
+            .mobile-tabs { display: flex; }
+
+            /* Drop the grid — each panel container floats over .main
+             * and only the active one is visible. */
+            .main {
+                display: block;
+                position: relative;
+            }
+            .main > .sidebar,
+            .main > .center,
+            .main > .right,
+            .main > .bottom {
+                position: absolute;
+                inset: 0;
+                display: none;
+            }
+            .main[data-mobile-view="names"] > .sidebar,
+            .main[data-mobile-view="disasm"] > .center,
+            .main[data-mobile-view="view"] > .right,
+            .main[data-mobile-view="tools"] > .bottom {
+                display: flex;
+            }
+
+            /* The desktop .main.hex-collapsed .right { display:none }
+             * rule would otherwise hide the View tab — override it. */
+            .main.hex-collapsed > .right {
+                display: none;
+            }
+            .main.hex-collapsed[data-mobile-view="view"] > .right {
+                display: flex;
+            }
+
+            /* Tools view: hide the Console (always the first panel
+             * in .bottom) so only the Strings/Emulation tabbed
+             * panel takes the screen. */
+            .main[data-mobile-view="tools"] > .bottom > bint-panel:first-of-type {
+                display: none;
+            }
+        }
+
         /* Modal overlay */
         .modal-overlay {
             position: fixed;
@@ -697,8 +828,8 @@ template.innerHTML = `
                 <button class="btn-back" disabled title="Go back (Alt+Left)">&lt;</button>
                 <button class="btn-forward" disabled title="Go forward (Alt+Right)">&gt;</button>
             </div>
-            <button class="btn-open">Open File</button>
-            <button class="btn-save" disabled>Save File</button>
+            <button class="btn-open">Open</button>
+            <button class="btn-save" disabled>Save</button>
             <button class="btn-analyze" disabled>Analyze</button>
             <span class="toolbar-spacer"></span>
             <button class="btn-options" title="Configure options">Options</button>
@@ -777,6 +908,25 @@ template.innerHTML = `
         <span class="status-item status-mode">WASM</span>
         <span class="status-item status-arch">-</span>
         <span class="status-item status-version"></span>
+    </div>
+
+    <div class="mobile-tabs">
+        <button type="button" data-mobile-view="disasm" class="active">
+            <span class="tab-icon">&lt;&gt;</span>
+            <span>Disasm</span>
+        </button>
+        <button type="button" data-mobile-view="names">
+            <span class="tab-icon">n</span>
+            <span>Names</span>
+        </button>
+        <button type="button" data-mobile-view="view">
+            <span class="tab-icon">#</span>
+            <span>View</span>
+        </button>
+        <button type="button" data-mobile-view="tools">
+            <span class="tab-icon">s</span>
+            <span>Tools</span>
+        </button>
     </div>
 
     <div class="drop-zone">
@@ -951,6 +1101,23 @@ export class BintApp extends HTMLElement {
             this._onPanelCollapseChanged(e);
         });
 
+        // Mobile single-panel mode. The desktop split-pane layout is
+        // unusable on a phone, so swap in a "one panel + bottom tab
+        // bar" view via CSS. JS just maintains the data-mobile-view
+        // attribute on `.main` and the `.active` class on the
+        // matching tab button — the rest is media-query-driven.
+        this._mobileTabs = this.shadowRoot.querySelector('.mobile-tabs');
+        this._mobileTabs.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-mobile-view]');
+            if (!btn) return;
+            this._setMobileView(btn.dataset.mobileView);
+        });
+        // Always seed the attribute — the CSS only acts on it under
+        // the mobile @media query, but a viewport rotation that
+        // crosses the breakpoint would otherwise land on a blank
+        // .main with no container marked visible.
+        this._setMobileView('disasm');
+
         // Click on collapsed hex tab to restore it
         this._hexCollapsedTab.addEventListener('click', () => {
             if (this._hexPanel && this._hexPanel.collapsed) {
@@ -1095,8 +1262,15 @@ export class BintApp extends HTMLElement {
 
         const splitters = main.querySelectorAll('.splitter');
         for (const sp of splitters) {
-            sp.addEventListener('mousedown', (e) => {
+            // Pointer events unify mouse + touch + pen. Capturing the
+            // pointer on the splitter element means subsequent
+            // pointermove/pointerup fire on the splitter even after
+            // the finger/cursor leaves it — no need for window-level
+            // listeners or a separate touch-event code path.
+            sp.addEventListener('pointerdown', (e) => {
+                if (e.button !== undefined && e.button !== 0) return;
                 e.preventDefault();
+                sp.setPointerCapture(e.pointerId);
                 const which = sp.dataset.resize;
                 const axis = sp.classList.contains('col') ? 'col' : 'row';
                 const startX = e.clientX;
@@ -1139,15 +1313,52 @@ export class BintApp extends HTMLElement {
                     writeTracks(axis, tracks);
                 };
 
-                const onUp = () => {
-                    window.removeEventListener('mousemove', onMove);
-                    window.removeEventListener('mouseup', onUp);
+                const onUp = (ev) => {
+                    sp.removeEventListener('pointermove', onMove);
+                    sp.removeEventListener('pointerup', onUp);
+                    sp.removeEventListener('pointercancel', onUp);
+                    if (sp.hasPointerCapture(ev.pointerId)) {
+                        sp.releasePointerCapture(ev.pointerId);
+                    }
                     sp.classList.remove('dragging');
                     document.body.style.cursor = '';
                 };
-                window.addEventListener('mousemove', onMove);
-                window.addEventListener('mouseup', onUp);
+                sp.addEventListener('pointermove', onMove);
+                sp.addEventListener('pointerup', onUp);
+                sp.addEventListener('pointercancel', onUp);
             });
+        }
+    }
+
+    /**
+     * Pick which mobile container is visible. Toggles the
+     * data-mobile-view attribute on .main (CSS does the actual
+     * show/hide) and the .active class on the matching tab button.
+     * On desktop, all tabs are hidden via media query — this is a
+     * no-op visually so it's safe to call regardless of viewport.
+     *
+     * Notifies the decompile view when "view" is selected with the
+     * decompile sub-tab active so it doesn't sit idle, and the
+     * emulation panel similarly when "tools" is selected.
+     */
+    _setMobileView(view) {
+        if (!this._main || !this._mobileTabs) return;
+        this._main.dataset.mobileView = view;
+        this._mobileTabs.querySelectorAll('button[data-mobile-view]').forEach((b) => {
+            b.classList.toggle('active', b.dataset.mobileView === view);
+        });
+        // Wake the decompile / emulation panels when their slot
+        // becomes visible, so they don't stay frozen on a stale
+        // (or empty) render.
+        if (view === 'view' && this._decompileView) {
+            const decompActive = this.shadowRoot
+                .querySelector('button[data-view="decompile"]')?.classList.contains('active');
+            this._decompileView.setActive(!!decompActive);
+        }
+        if (view === 'tools' && this._emulation) {
+            const emuActive = this.shadowRoot
+                .querySelector('button[data-tools-view="emulation"]')?.classList.contains('active');
+            this._emulation.setActive(!!emuActive);
         }
     }
 

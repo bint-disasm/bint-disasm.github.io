@@ -65,6 +65,10 @@ template.innerHTML = `
             cursor: grab;
             background:
                 radial-gradient(circle, var(--border-subtle) 1px, transparent 1px) 0 0 / 24px 24px;
+            /* Block native pan/zoom so a finger drag stays a graph
+             * pan instead of scrolling the page or pinch-zooming
+             * the whole document on mobile. */
+            touch-action: none;
         }
         .graph-viewport.panning { cursor: grabbing; }
 
@@ -242,6 +246,15 @@ template.innerHTML = `
             width: 1%;
             white-space: nowrap;
             letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 768px) {
+            /* Bytes column eats too much horizontal real estate on
+             * a phone — and the disassembly text is what people
+             * actually want to read. Hide it under the breakpoint. */
+            .col-bytes {
+                display: none;
+            }
         }
 
         .col-instruction {
@@ -883,34 +896,103 @@ export class BintDisassembly extends HTMLElement {
         };
         requestAnimationFrame(fit);
 
-        // Drag-to-pan on background; suppress when user starts on a
-        // clickable element so address clicks still seek.
-        let dragging = false;
-        let lastX = 0, lastY = 0;
-        viewport.addEventListener('mousedown', (e) => {
-            if (
-                e.target.closest('.node-addr') ||
-                e.target.closest('.ref-target') ||
-                e.target.closest('.node-bp')
-            ) return;
-            dragging = true;
-            lastX = e.clientX;
-            lastY = e.clientY;
-            viewport.classList.add('panning');
+        // Pan + pinch-zoom via pointer events. One active pointer
+        // pans by translating the world; two active pointers pinch-
+        // zoom around the midpoint between them, with the panning
+        // delta of the midpoint also applied so the gesture feels
+        // anchored to the user's fingers. Clickable elements
+        // (.node-addr / .ref-target / .node-bp) still receive their
+        // own click events because we don't preventDefault on a pointer
+        // that landed on one — only on background drags.
+        const activePointers = new Map(); // pointerId → {x, y}
+        let lastCentroid = null;          // {x, y} — last frame's midpoint
+        let lastPinchDist = null;         // last frame's |p1 - p2|
+
+        const startedOnControl = (target) => !!(
+            target.closest?.('.node-addr') ||
+            target.closest?.('.ref-target') ||
+            target.closest?.('.node-bp')
+        );
+        const centroidOf = () => {
+            let x = 0, y = 0;
+            for (const p of activePointers.values()) { x += p.x; y += p.y; }
+            const n = activePointers.size;
+            return { x: x / n, y: y / n };
+        };
+        const pinchDist = () => {
+            const [a, b] = [...activePointers.values()];
+            return Math.hypot(a.x - b.x, a.y - b.y);
+        };
+
+        viewport.addEventListener('pointerdown', (e) => {
+            if (e.button !== undefined && e.button !== 0) return;
+            // Ignore presses on interactive elements so click
+            // handlers (seek-on-address, ref-target, breakpoint)
+            // still fire normally. Capturing the pointer here would
+            // also swallow those clicks.
+            if (startedOnControl(e.target)) return;
+            viewport.setPointerCapture(e.pointerId);
+            activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (activePointers.size === 1) {
+                viewport.classList.add('panning');
+                lastCentroid = { x: e.clientX, y: e.clientY };
+                lastPinchDist = null;
+            } else if (activePointers.size === 2) {
+                lastCentroid = centroidOf();
+                lastPinchDist = pinchDist();
+            }
             e.preventDefault();
         });
-        window.addEventListener('mousemove', (e) => {
-            if (!dragging) return;
-            tx += e.clientX - lastX;
-            ty += e.clientY - lastY;
-            lastX = e.clientX;
-            lastY = e.clientY;
+
+        viewport.addEventListener('pointermove', (e) => {
+            if (!activePointers.has(e.pointerId)) return;
+            activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+            if (activePointers.size === 1) {
+                const c = centroidOf();
+                tx += c.x - lastCentroid.x;
+                ty += c.y - lastCentroid.y;
+                lastCentroid = c;
+            } else if (activePointers.size >= 2) {
+                const rect = viewport.getBoundingClientRect();
+                const c = centroidOf();
+                const d = pinchDist();
+                if (lastPinchDist && lastPinchDist > 0) {
+                    const factor = d / lastPinchDist;
+                    const newScale = Math.max(0.2, Math.min(3, scale * factor));
+                    const mx = c.x - rect.left;
+                    const my = c.y - rect.top;
+                    tx = mx - (mx - tx) * (newScale / scale);
+                    ty = my - (my - ty) * (newScale / scale);
+                    scale = newScale;
+                }
+                // Pan component: translate by the centroid delta.
+                tx += c.x - lastCentroid.x;
+                ty += c.y - lastCentroid.y;
+                lastCentroid = c;
+                lastPinchDist = d;
+            }
             apply();
         });
-        window.addEventListener('mouseup', () => {
-            dragging = false;
-            viewport.classList.remove('panning');
-        });
+
+        const endPointer = (e) => {
+            if (!activePointers.has(e.pointerId)) return;
+            activePointers.delete(e.pointerId);
+            if (viewport.hasPointerCapture(e.pointerId)) {
+                viewport.releasePointerCapture(e.pointerId);
+            }
+            if (activePointers.size === 0) {
+                viewport.classList.remove('panning');
+                lastCentroid = null;
+                lastPinchDist = null;
+            } else {
+                // Re-anchor on the remaining pointer(s).
+                lastCentroid = centroidOf();
+                lastPinchDist = activePointers.size >= 2 ? pinchDist() : null;
+            }
+        };
+        viewport.addEventListener('pointerup', endPointer);
+        viewport.addEventListener('pointercancel', endPointer);
 
         // Wheel zoom around the cursor.
         viewport.addEventListener('wheel', (e) => {
