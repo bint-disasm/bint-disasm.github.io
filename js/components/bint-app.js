@@ -515,6 +515,13 @@ template.innerHTML = `
             display: none;
             background: var(--bg-secondary);
             border-top: 1px solid var(--border-color);
+            /* Lift the buttons above the iOS home indicator / Android
+             * gesture bar. Requires viewport-fit=cover on the meta
+             * viewport tag — without it env() resolves to 0 even on
+             * phones with a real inset. The background extends into
+             * the inset area so the bar looks taller rather than
+             * floating above an empty strip. */
+            padding-bottom: env(safe-area-inset-bottom);
         }
         .mobile-tabs button {
             flex: 1;
@@ -1156,6 +1163,16 @@ export class BintApp extends HTMLElement {
         // Event subscriptions
         events.on(Events.SEEK_CHANGED, (addr) => this._onSeekChanged(addr));
         events.on(Events.BINARY_LOADED, (meta) => this._onBinaryLoaded(meta));
+
+        // On mobile, tapping a name in the Names tab implicitly means
+        // "take me there" — flip to the Disasm tab so the user sees
+        // the destination instead of staring at the same names list.
+        // No-op on desktop: every panel is visible at once.
+        events.on(Events.SELECTION_CHANGED, ({ type } = {}) => {
+            if (type !== 'name') return;
+            if (!window.matchMedia('(max-width: 768px)').matches) return;
+            this._setMobileView('disasm');
+        });
     }
 
     async connectedCallback() {
