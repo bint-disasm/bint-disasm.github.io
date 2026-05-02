@@ -225,13 +225,19 @@ class DecompileView extends HTMLElement {
         }, SEEK_DEBOUNCE_MS);
     }
 
-    async _ensureClient() {
-        if (this._client) return this._client;
-        this._client = new DecompilerClient('/decompiler/worker.js');
-        await this._client.init({
-            specBaseUrl: new URL('/decompiler/spec/', location.href).toString(),
-            manifestUrl: '/decompiler/spec-manifest.json',
-        });
+    async _ensureClient(arch) {
+        if (!this._client) {
+            this._client = new DecompilerClient('/decompiler/worker.js');
+            this._loadedArchs = new Set();
+        }
+        if (!this._loadedArchs.has(arch)) {
+            await this._client.init({
+                specBaseUrl: new URL('/decompiler/spec/', location.href).toString(),
+                manifestUrl: '/decompiler/spec-manifest.json',
+                arch,
+            });
+            this._loadedArchs.add(arch);
+        }
         return this._client;
     }
 
@@ -243,6 +249,10 @@ class DecompileView extends HTMLElement {
         const baseSleigh = api.session?.sleigh_language_id();
         if (!baseSleigh) throw new Error(`unsupported architecture: ${meta.architecture}`);
         const languageId = `${baseSleigh}:${compilerFor(meta.format)}`;
+        // The first segment of a SLEIGH id ("x86:LE:64:default") is the
+        // top-level spec directory in the manifest. Used to mount only
+        // this binary's processor instead of all five.
+        const archDir = baseSleigh.split(':')[0];
 
         // Pull per-segment bytes. The decompiler's load image needs each
         // loadable segment at its true virtual address — a flat
@@ -274,7 +284,7 @@ class DecompileView extends HTMLElement {
         // requiring user retyping.
         const strings = await this._collectStrings();
 
-        const client = await this._ensureClient();
+        const client = await this._ensureClient(archDir);
         this._session = await client.open({
             languageId,
             regions,

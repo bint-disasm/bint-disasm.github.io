@@ -9,8 +9,15 @@
 // The main thread talks to this worker via postMessage. Every request
 // carries an `id` so the main side can correlate replies:
 //
-//   → { id, cmd: "init",      specBaseUrl, manifestUrl }
+//   → { id, cmd: "init",      specBaseUrl, manifestUrl, arch }
 //   ← { id, ok, error? }
+//
+// `arch` is the manifest's top-level processor directory ("x86",
+// "AARCH64", "ARM", "MIPS", "PowerPC") — only that subset of the
+// manifest gets mounted, so opening the decompiler doesn't pull every
+// processor's spec files. `init` may be called again with a different
+// `arch` to lazily mount additional processors when the user opens a
+// binary of a new architecture in the same session.
 //
 //   → { id, cmd: "open",      regions[{vaddr, bytes}], languageId, symbols[], readonly[] }
 //   ← { id, ok, sessionId?, error? }
@@ -27,6 +34,8 @@ let mod = null;             // the loaded emscripten module
 let api = null;             // cwrapped C API
 const sessions = new Map(); // sessionId → wasm handle pointer
 let nextSession = 1;
+let cachedManifest = null;  // fetched once, reused across re-inits
+const mountedArchs = new Set(); // top-level dirs already mounted
 
 function bindApi(m) {
     return {
@@ -60,22 +69,32 @@ function mountLazyFile(FS, relPath, size, url) {
     // so its initial stat() doesn't need a HEAD request. Not critical.
 }
 
-async function doInit({ specBaseUrl, manifestUrl }) {
-    if (mod) return; // idempotent
-    mod = await BintDecompilerModule();
-    api = bindApi(mod);
+async function doInit({ specBaseUrl, manifestUrl, arch }) {
+    if (!arch) throw new Error('init requires arch');
 
-    const manifest = await (await fetch(manifestUrl)).json();
+    if (!mod) {
+        mod = await BintDecompilerModule();
+        api = bindApi(mod);
+        try { mod.FS.mkdir('/spec'); } catch (e) {}
+    }
 
-    // Root dir
-    try { mod.FS.mkdir('/spec'); } catch (e) {}
+    if (mountedArchs.has(arch)) return;
+    mountedArchs.add(arch);
 
-    // One LazyFile per manifest entry.
+    if (!cachedManifest) {
+        cachedManifest = await (await fetch(manifestUrl)).json();
+    }
+
+    // Mount only this arch's slice of the manifest. SleighArchitecture
+    // scans .ldefs in every registered spec dir at handle-create time,
+    // so registering all five processors here would make the decompiler
+    // pull ldefs/sla files for x86, MIPS, PowerPC, etc. even when the
+    // user only ever decompiles AArch64.
+    const archPrefix = arch + '/';
     const dirs = new Set();
-    for (const entry of manifest.files) {
+    for (const entry of cachedManifest.files) {
+        if (!entry.path.startsWith(archPrefix)) continue;
         mountLazyFile(mod.FS, entry.path, entry.size, specBaseUrl + entry.path);
-        // Collect each file's parent dir; we'll tell the decompiler about
-        // the language dirs after the FS is populated.
         const parts = entry.path.split('/');
         if (parts[parts.length - 2] === 'languages') {
             dirs.add('/spec/' + parts.slice(0, -1).join('/'));

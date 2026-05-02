@@ -33,12 +33,15 @@ export class DecompilerClient {
     }
 
     /**
-     * Set up the decompiler with a spec manifest. Call once per client.
-     * `specBaseUrl` should be a URL prefix ending in `/`; manifest paths
-     * are appended to it to form per-file URLs.
+     * Mount the spec files for one processor. `arch` is the manifest's
+     * top-level processor directory ("x86", "AARCH64", "ARM", "MIPS",
+     * "PowerPC"); only that subset is materialised in the worker's
+     * lazy FS, keeping initial load to one architecture instead of all
+     * five. Safe to call repeatedly — the worker tracks which archs
+     * are mounted and skips work it already did.
      */
-    init({ specBaseUrl, manifestUrl }) {
-        return this._send('init', { specBaseUrl, manifestUrl });
+    init({ specBaseUrl, manifestUrl, arch }) {
+        return this._send('init', { specBaseUrl, manifestUrl, arch });
     }
 
     /**

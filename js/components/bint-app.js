@@ -1076,8 +1076,19 @@ export class BintApp extends HTMLElement {
             return value.split(' ').map((v) => parseFloat(v));
         };
 
+        // Write track sizes back as CSS, keeping the *fluid* track
+        // expressed as `minmax(MIN_PX, 1fr)` so the grid reflows on
+        // window resize. The fluid track differs per axis: for cols
+        // it's the right panel (track 4 — last), for rows it's the
+        // top panel (track 0 — first), since the bottom row is the
+        // resizable fixed-height one. A fixed-px fluid track would
+        // freeze the trailing panel at whatever size it had at drag
+        // time and leave it clipped after a window resize.
         const writeTracks = (axis, tracks) => {
-            const css = tracks.map((v) => `${v}px`).join(' ');
+            const fluidIdx = axis === 'col' ? tracks.length - 1 : 0;
+            const css = tracks
+                .map((v, i) => (i === fluidIdx ? `minmax(${MIN_PX}px, 1fr)` : `${v}px`))
+                .join(' ');
             if (axis === 'col') main.style.gridTemplateColumns = css;
             else main.style.gridTemplateRows = css;
         };
@@ -1095,65 +1106,35 @@ export class BintApp extends HTMLElement {
                 document.body.style.cursor = axis === 'col' ? 'col-resize' : 'row-resize';
 
                 const onMove = (ev) => {
+                    // Each drag adjusts only the *fixed* tracks; the
+                    // last track is held as 1fr by writeTracks and
+                    // naturally absorbs whatever space is left. That
+                    // means we just clamp the fixed track against the
+                    // current container size — no manual partner
+                    // bookkeeping, and the grid reflows on window
+                    // resize because the trailing track is fluid.
                     const tracks = [...startTracks];
+                    const splitter = tracks[1] || 6;
                     if (which === 'sidebar') {
-                        // Sidebar grows/shrinks — the difference has
-                        // to come *out of* center+right combined,
-                        // otherwise the total exceeds the container
-                        // width and the right column gets clipped.
-                        // Distribute the negative delta proportional
-                        // to each track's starting share so a
-                        // dragged-narrow center stays narrow vs.
-                        // a wide right.
                         const dx = ev.clientX - startX;
-                        const otherTotal = startTracks[2] + startTracks[4];
-                        const minOther = 2 * MIN_PX;
-                        // Cap sidebar growth so center+right have at
-                        // least MIN_PX each.
-                        const maxSidebar = startTracks[0] + (otherTotal - minOther);
-                        const newSidebar = Math.max(MIN_PX, Math.min(maxSidebar, startTracks[0] + dx));
-                        const newOther = otherTotal - (newSidebar - startTracks[0]);
-                        const ratio = otherTotal > 0 ? startTracks[2] / otherTotal : 0.5;
-                        tracks[0] = newSidebar;
-                        tracks[2] = Math.max(MIN_PX, newOther * ratio);
-                        tracks[4] = Math.max(MIN_PX, newOther - tracks[2]);
+                        const W = main.clientWidth;
+                        // Reserve splitters + center + at least MIN_PX
+                        // for the right column.
+                        const maxSidebar = W - 2 * splitter - tracks[2] - MIN_PX;
+                        tracks[0] = Math.max(MIN_PX, Math.min(maxSidebar, startTracks[0] + dx));
                     } else if (which === 'right') {
-                        // Drag adjusts the boundary between center
-                        // (col 2) and right (col 4): one grows by
-                        // dx, the other shrinks by dx. Both get
-                        // pinned to fixed px once the user drags.
                         const dx = ev.clientX - startX;
-                        const newCenter = Math.max(MIN_PX, startTracks[2] + dx);
-                        const newRight = Math.max(MIN_PX, startTracks[4] - dx);
-                        // If a clamp kicked in on either side, also
-                        // clamp the partner so the total doesn't
-                        // drift past the layout width.
-                        if (newCenter <= MIN_PX) {
-                            tracks[2] = MIN_PX;
-                            tracks[4] = startTracks[2] + startTracks[4] - MIN_PX;
-                        } else if (newRight <= MIN_PX) {
-                            tracks[4] = MIN_PX;
-                            tracks[2] = startTracks[2] + startTracks[4] - MIN_PX;
-                        } else {
-                            tracks[2] = newCenter;
-                            tracks[4] = newRight;
-                        }
+                        const W = main.clientWidth;
+                        const maxCenter = W - tracks[0] - 2 * splitter - MIN_PX;
+                        tracks[2] = Math.max(MIN_PX, Math.min(maxCenter, startTracks[2] + dx));
                     } else if (which === 'bottom') {
-                        // Drag the top/bottom boundary. Row 0 (top)
-                        // grows by dy, row 2 (bottom) shrinks by dy.
+                        // Splitter is at the boundary between top
+                        // (1fr) and bottom (fixed). Drag down → bottom
+                        // shrinks; drag up → bottom grows.
                         const dy = ev.clientY - startY;
-                        const newTop = Math.max(MIN_PX, startTracks[0] + dy);
-                        const newBottom = Math.max(MIN_PX, startTracks[2] - dy);
-                        if (newTop <= MIN_PX) {
-                            tracks[0] = MIN_PX;
-                            tracks[2] = startTracks[0] + startTracks[2] - MIN_PX;
-                        } else if (newBottom <= MIN_PX) {
-                            tracks[2] = MIN_PX;
-                            tracks[0] = startTracks[0] + startTracks[2] - MIN_PX;
-                        } else {
-                            tracks[0] = newTop;
-                            tracks[2] = newBottom;
-                        }
+                        const H = main.clientHeight;
+                        const maxBottom = H - splitter - MIN_PX;
+                        tracks[2] = Math.max(MIN_PX, Math.min(maxBottom, startTracks[2] - dy));
                     }
                     writeTracks(axis, tracks);
                 };
@@ -1271,6 +1252,13 @@ export class BintApp extends HTMLElement {
         if (!this._api) return;
 
         console.log(`Loading ${file.name}...`);
+
+        // Strip query (e.g. `?example=ais3_crackme`) and hash so the URL
+        // reflects the binary the user is *now* working with — otherwise
+        // a reload after opening a different file would re-trigger the
+        // example preloader. The BINARY_LOADED handler pushes a fresh
+        // `#<entry_point>` hash a moment later via _onSeekChanged.
+        history.replaceState(null, '', window.location.pathname);
 
         // If a binary is already loaded, swap in a fresh wasm Session so
         // the new file starts from a clean slate — no leftover analysis,
@@ -1574,13 +1562,19 @@ export class BintApp extends HTMLElement {
     async _openRenameModal() {
         if (!this._api) return;
 
-        // Pre-fill with current function name if available.
+        // Pre-fill with current function name if available. Resolve
+        // through the function entry first — otherwise renaming from
+        // mid-body sees no Function name at the seek address and
+        // falls back to "" instead of the actual function name.
         try {
-            const addr = await this._api.getSeek();
-            const out = this._api.session.name_here(BigInt(addr));
+            const seek = await this._api.getSeek();
+            const entry = this._api.resolveFunctionEntry(seek);
+            const out = this._api.session.name_here(entry);
             const entries = out?.entries || [];
-            const func = entries.find((e) => e.kind === 'function');
-            this._modalRenameInput.value = func?.name || '';
+            const callable = entries.find((e) =>
+                e.kind === 'function' || e.kind === 'import' || e.kind === 'export'
+            );
+            this._modalRenameInput.value = callable?.name || '';
         } catch {
             this._modalRenameInput.value = '';
         }
@@ -1773,22 +1767,26 @@ export class BintApp extends HTMLElement {
         if (!this._api) return;
 
         try {
-            const addr = await this._api.getSeek();
-            const addrBig = BigInt(addr);
+            // Resolve seek to the enclosing function entry — without
+            // this a rename invoked from mid-body silently lands a
+            // brand-new Function name at the wrong address and the
+            // entry's `func_<hex>` keeps showing in disassembly.
+            const seek = await this._api.getSeek();
+            const entryBig = this._api.resolveFunctionEntry(seek);
 
-            // Check if a function name already exists at this address.
-            // NamesAtOutput.entries are typed NameEntry — kind is the
-            // full word ("function", "import", …), id lives on the
-            // entry directly.
-            const out = this._api.session.name_here(addrBig);
+            // Find any callable name at the entry — Function, Import,
+            // or Export. Renaming an Import in place is preferable to
+            // dropping a parallel Function next to it.
+            const out = this._api.session.name_here(entryBig);
             const entries = out?.entries || [];
-            const existing = entries.find((e) => e.kind === 'function');
+            const existing = entries.find((e) =>
+                e.kind === 'function' || e.kind === 'import' || e.kind === 'export'
+            );
 
             if (existing) {
-                // Rename existing function to preserve analysis info.
                 this._api.session.name_rename(BigInt(existing.id), name);
             } else {
-                this._api.session.name_add('func', addrBig, name);
+                this._api.session.name_add('func', entryBig, name);
             }
 
             // Refresh function list to show updated name
