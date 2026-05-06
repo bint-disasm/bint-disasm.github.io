@@ -118,6 +118,12 @@ template.innerHTML = `
         .token.ghidra-synth                { color: #dcdcaa; font-style: italic; }
         .token.ghidra-var                  { color: #9cdcfe; }
         .token.ghidra-type                 { color: #4ec9b0; }
+
+        /* Clickable seek targets. Either a function-call token whose
+         * name we recognised in the names DB, or a Ghidra synthetic
+         * symbol with a baked-in address (FUN_4005c5, DAT_…, etc.). */
+        .ref-target { cursor: pointer; }
+        .ref-target:hover { text-decoration: underline; }
     </style>
     <div class="code" id="code"><div class="hint">Load a binary and seek to a function.</div></div>
 `;
@@ -153,6 +159,11 @@ class DecompileView extends HTMLElement {
         // the displayed function stays put even as the rest of the
         // UI navigates. Toggled from the parent via setLocked().
         this._locked = false;
+        // name → "0x..." string. Populated alongside the
+        // address-keyed symbol list in _ensureSession; used by the
+        // post-Prism pass to mark function callsites clickable.
+        // Reset whenever the binary changes.
+        this._symbolsByName = new Map();
     }
 
     /** Pin / unpin the panel to its current seek. While locked we
@@ -179,6 +190,11 @@ class DecompileView extends HTMLElement {
         events.on(Events.BINARY_UNLOADED, () => this._onBinaryChanged());
         events.on(Events.SEEK_CHANGED, (addr) => this._onSeek(addr));
         events.on(Events.SEEK, (addr) => this._onSeek(addr));
+
+        // Delegated click → seek for any .ref-target the post-Prism
+        // pass tagged in _markRefTargets. Wired here (not per-render)
+        // so it survives innerHTML rewrites.
+        this._code.addEventListener('click', (e) => this._onCodeClick(e));
     }
 
     /**
@@ -230,6 +246,7 @@ class DecompileView extends HTMLElement {
             this._sessionKey = null;
             this._sessionRegions = null;
         }
+        this._symbolsByName = new Map();
         this._lastAddr = null;
         this._code.innerHTML = '<div class="hint">Binary changed.</div>';
         // load_binary set seek to the entry point on the Rust side but
@@ -392,6 +409,12 @@ class DecompileView extends HTMLElement {
         // pull both via the typed name_list and merge. First-wins on
         // duplicate addresses.
         const out = new Map(); // BigInt address → name
+        // Build the inverse name → "0x..." map at the same time so the
+        // click-to-seek pass doesn't have to walk the full list. Last
+        // address wins per name — matters for unusual cases where two
+        // entries share a label, in which case nothing's "right" but
+        // landing on a real address beats nothing.
+        const byName = new Map();
         for (const kind of ['func', 'import']) {
             try {
                 const output = this._api.session.name_list(kind);
@@ -399,11 +422,13 @@ class DecompileView extends HTMLElement {
                     const name = e.name || '';
                     if (e.address === 0n || !name) continue;
                     if (!out.has(e.address)) out.set(e.address, name);
+                    byName.set(name, '0x' + e.address.toString(16));
                 }
             } catch (e) {
                 console.warn(`name_list(${kind}) failed`, e);
             }
         }
+        this._symbolsByName = byName;
         return Array.from(out.entries());
     }
 
@@ -411,6 +436,15 @@ class DecompileView extends HTMLElement {
      * Render decompiler output into the code pane. Uses Prism for C
      * syntax highlighting if it's available; otherwise falls back to
      * plain text so a missing Prism doesn't silently break the panel.
+     *
+     * After highlighting, walks the produced tokens and marks anything
+     * we can resolve to a binary address as a clickable seek target:
+     *   - `.token.function` whose textContent matches a known function
+     *     or import in the names DB → seek to that symbol's address.
+     *   - `.token.ghidra-synth` (FUN_4005c5, DAT_4005c5, …) → seek to
+     *     the hex baked into the name itself.
+     * The actual click-to-seek dispatch lives in _onCodeClick — wired
+     * once on the container so it survives every re-render.
      */
     _renderCode(code) {
         const grammar = ensureGhidraGrammar();
@@ -418,7 +452,51 @@ class DecompileView extends HTMLElement {
             this._code.innerHTML = window.Prism.highlight(code, grammar, 'c');
         } else {
             this._code.textContent = code;
+            return;
         }
+        this._markRefTargets();
+    }
+
+    /** Walk the just-rendered token tree and tag anything with a
+     *  resolvable address. The actual Map lookup is cheap (≤ a few
+     *  thousand entries), so doing this on every refresh is fine
+     *  even if the output is several thousand lines. */
+    _markRefTargets() {
+        // Function-call sites: Prism's C grammar tags `name(` as
+        // .token.function. Most of these are real calls; some are
+        // typedef / cast tokens that happen to be followed by `(`,
+        // but the names-DB lookup filters those out automatically.
+        for (const span of this._code.querySelectorAll('.token.function')) {
+            const name = span.textContent;
+            const addr = this._symbolsByName.get(name);
+            if (addr) {
+                span.classList.add('ref-target');
+                span.dataset.target = addr;
+            }
+        }
+        // Ghidra-synthetic names — FUN_<hex>, SUB_<hex>, DAT_<hex>,
+        // LAB_<hex>, OFF_<hex>, PTR_<hex>, UNK_<hex>. The hex tail is
+        // the address. We seek to it directly; if it lives inside a
+        // function body the disasm panel snaps to the entry on render.
+        for (const span of this._code.querySelectorAll('.token.ghidra-synth')) {
+            const m = span.textContent.match(/_([0-9a-fA-F]+)$/);
+            if (!m) continue;
+            span.classList.add('ref-target');
+            span.dataset.target = '0x' + m[1].toLowerCase();
+        }
+    }
+
+    /** Delegated click handler on the code container. Wired once in
+     *  connectedCallback so it survives every innerHTML rewrite. */
+    _onCodeClick(e) {
+        const ref = e.target.closest('.ref-target');
+        if (!ref) return;
+        const addr = ref.dataset.target;
+        if (!addr || !this._api?.setSeek) return;
+        e.stopPropagation();
+        this._api.setSeek(addr).catch((err) => {
+            console.warn('[decompile] setSeek failed', err);
+        });
     }
 
     async _decompile() {
